@@ -1,0 +1,100 @@
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.manifest
+*.spec
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env.local
+
+# uv
+.uv/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ruff
+.ruff_cache/
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# ── Node / pnpm ──────────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+.pnpm-debug.log
+
+# Build outputs
+.next/
+out/
+dist/
+.vite/
+
+# TypeScript build info
+*.tsbuildinfo
+
+# ── Entornos y secretos ──────────────────────────────────────────────────────
+.env
+.env.*.local
+!.env.example
+
+# ── Docker / volúmenes ───────────────────────────────────────────────────────
+postgres-data/
+redis-data/
+media/
+
+# ── Media local ──────────────────────────────────────────────────────────────
+backend/media/
+uploads/
+
+# ── Caches y temporales ──────────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.cache/
+tmp/
+temp/
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+Thumbs.db
+
+# ── Alembic ──────────────────────────────────────────────────────────────────
+# No ignorar las migraciones; solo los archivos generados automáticamente
+# que no queremos versionar
+alembic/__pycache__/
