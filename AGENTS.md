@@ -86,8 +86,13 @@ Antes de implementar cualquier tarea, leer los docs de `/docs` relevantes:
 
 ---
 
-## Comandos canónicos _(pendiente — se completan cuando existan)_
+## Comandos canónicos
+
 ```bash
+# Entorno de desarrollo (disponibles desde tarea 0.2)
+dev-up:         ./scripts/dev-up.sh           # levanta db y redis
+dev-down:       ./scripts/dev-down.sh         # detiene los servicios
+
 # Backend
 lint:          pendiente (ruff check .)
 types:         pendiente (mypy .)

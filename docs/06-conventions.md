@@ -95,23 +95,44 @@ style:    formateo, sin cambios de lógica
 
 ---
 
-## Comandos canónicos _(pendiente — se completan cuando existan)_
+## Comandos canónicos
 
 ```bash
-# Backend
+# ── Entorno de desarrollo (disponibles desde tarea 0.2) ──────────────────────
+dev-up:         ./scripts/dev-up.sh           # levanta db y redis
+dev-down:       ./scripts/dev-down.sh         # detiene los servicios (conserva volúmenes)
+dev-down-v:     ./scripts/dev-down.sh --volumes  # detiene y elimina volúmenes
+
+# ── Backend ───────────────────────────────────────────────────────────────────
 lint:           ruff check .                  # pendiente (tarea 0.3)
 format:         ruff format .                 # pendiente (tarea 0.3)
 types:          mypy .                        # pendiente (tarea 0.3)
 tests:          pytest                        # pendiente (tarea 0.3)
 
-# Frontend (admin y web)
+# ── Frontend (admin y web) ────────────────────────────────────────────────────
 lint-fe:        pnpm lint                     # pendiente (tarea 2.1 / 3.1)
 types-fe:       pnpm tsc --noEmit             # pendiente (tarea 2.1 / 3.1)
 tests-fe:       pnpm vitest                   # pendiente (tarea 2.1 / 3.1)
 e2e:            pnpm playwright test          # pendiente (tarea 6.4)
 
-# Generación de tipos
+# ── Generación de tipos ───────────────────────────────────────────────────────
 generate-types: bash scripts/generate-types.sh  # pendiente (tarea 2.1)
+```
+
+### Scripts en Windows
+
+Los scripts `.sh` se ejecutan desde **Git Bash** o **WSL**, no desde PowerShell/CMD:
+
+```bash
+./scripts/dev-up.sh
+./scripts/dev-down.sh
+```
+
+Equivalente en PowerShell:
+
+```powershell
+docker compose -f infra/docker-compose.yml --env-file .env up -d db redis
+docker compose -f infra/docker-compose.yml --env-file .env down
 ```
 
 ---
