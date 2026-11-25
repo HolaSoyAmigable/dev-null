@@ -1,0 +1,15 @@
+{
+  "name": "devnull",
+  "private": true,
+  "packageManager": "pnpm@12.21.0",
+  "scripts": {
+    "generate-types": "bash scripts/generate-types.sh",
+    "lint": "corepack pnpm -r --if-present lint",
+    "typecheck": "corepack pnpm -r --if-present typecheck",
+    "test": "corepack pnpm --filter admin --filter web test",
+    "e2e": "corepack pnpm --filter e2e test"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
+  }
+}

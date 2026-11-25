@@ -227,8 +227,26 @@ Claves previstas: `site_name`, `author_name`, `short_bio`, `social_links`, `abou
 
 ---
 
+## Cambios respecto al diseño inicial
+
+- `posts.created_at` (timestamptz) y `posts.saves_since_revision` (contador para las revisiones
+  cada N guardados).
+- `daily_stats` usa `id` como PK y `UNIQUE NULLS NOT DISTINCT (date, post_id)`: una PK no admite
+  `post_id = NULL` (total del sitio). El upsert del worker usa esa restricción.
+- `engagement_events.page_view_id` es único: los eventos sucesivos de una visita actualizan los
+  máximos (scroll y segundos).
+- `media.storage_key` es único.
+- Claves foráneas: `ON DELETE SET NULL` para portada, OG, proyecto y categoría; `CASCADE` en
+  `post_tags`, `post_revisions`, `engagement_events` y `daily_stats`.
+
+## Decisiones
+
+- **Retención de `page_views` (5.3):** job diario del worker que borra los registros de más de
+  13 meses (`engagement_events` se borra en cascada). Sin particionado.
+- **Revisiones (1.4):** N = 5 guardados con cambios en título o contenido. También se guarda una
+  revisión al publicar y otra con el estado previo al restaurar.
+
 ## Preguntas abiertas
 
-- **Retención de `page_views`:** el doc de métricas especifica 13 meses; ¿se borra con un job del worker o con particionado por mes? A definir en tarea 5.3.
-- **Frecuencia de revisiones automáticas:** "cada N guardados" — el valor de N se define en tarea 1.4.
-- **Particionado de `page_views`:** con mucho tráfico, particionar por mes puede mejorar el rendimiento. Decisión diferida a fase 6.
+- **Particionado de `page_views`:** solo si el volumen lo exige; con el tráfico de un blog
+  personal no es necesario.

@@ -118,8 +118,23 @@ El worker APScheduler ejecuta cada noche (hora configurable, TBD en tarea 5.3):
 
 ---
 
+## Implementación
+
+- **Envío:** el pageview usa `fetch(..., { keepalive: true })` para recibir un `view_token`
+  firmado (HMAC); el engagement (scroll máximo y segundos activos, con pausa tras 30 s sin
+  interacción) se envía con `navigator.sendBeacon` al ocultar o abandonar la página. También se
+  respeta Global Privacy Control (`Sec-GPC`).
+- **Bots:** lista de patrones mantenida a mano (`app/modules/metrics/useragent.py`) y peticiones
+  sin `Accept-Language`.
+
+## Decisiones
+
+- **Hora de la agregación nocturna (5.3):** 00:15 UTC (`METRICS_AGGREGATION_HOUR_UTC` y
+  `METRICS_AGGREGATION_MINUTE_UTC`). Al arrancar, el worker agrega también el día anterior.
+- **Umbral de "leído" (5.2):** ≥ 75 % de scroll **y** ≥ 30 s activos (`read_rate`).
+- **Únicos de un periodo:** suma de los únicos diarios (la huella rota cada día por diseño).
+
 ## Preguntas abiertas
 
-- **Hora de la agregación nocturna:** ¿medianoche UTC o medianoche hora local del autor? A definir en tarea 5.3.
-- **Implementación de GeoLite2:** ¿biblioteca `geoip2` de MaxMind o alternativa? A decidir en la fase de pulido.
-- **Umbral de scroll para "leído":** ¿qué porcentaje de scroll y cuántos segundos se consideran una lectura completa? A definir en tarea 5.2.
+- **GeoLite2:** no implementado (requiere cuenta de MaxMind y la dependencia `geoip2`). Hasta
+  entonces `country` es `null` y el panel lo indica.

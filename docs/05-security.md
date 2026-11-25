@@ -18,6 +18,8 @@
 
 Implementado en Redis (contador deslizante). Responde `429 Too Many Requests` al superarlo.
 
+**IP del cliente.** `X-Forwarded-For` solo se usa con `TRUST_PROXY_HEADERS=true`, y se toma la entrada situada `TRUSTED_PROXY_HOPS` posiciones desde el final (la que añade el proxy de confianza), nunca la primera, que el cliente puede falsear. Por defecto está desactivado. Actívalo únicamente si la API no es accesible sin pasar por el proxy.
+
 ---
 
 ## Secretos y variables de entorno
@@ -95,9 +97,23 @@ Configuradas en Caddy para todas las respuestas:
 
 ---
 
+## Decisiones
+
+- **Refresh tokens (1.1):** lista blanca en Redis (`auth:refresh:{jti}`, TTL 7 días). Rotar o
+  cerrar sesión borra la entrada; cambiar la contraseña revoca todas las sesiones.
+- **Rate limiting (6.3):** login 5/min, eventos 60/min y endpoints públicos 300/min por IP
+  (configurables). Si Redis falla, no se bloquea el tráfico.
+- **Media (2.5):** máximo 10 MB (`MEDIA_MAX_BYTES`). Tipos por magic bytes: PNG, JPEG, GIF, WebP,
+  AVIF y PDF. **SVG rechazado** (puede contener scripts). Nombre `AAAA/MM/<uuid>.<ext>`.
+- **Lista de bots (5.1):** mantenida a mano, sin dependencias externas.
+- **CSP (3.6):** `default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'
+  'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self';
+  frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`.
+  `'unsafe-inline'` es necesario para el script de tema sin parpadeo y los estilos de Shiki. Hoy
+  la aplica Next.js; en la fase 8 se moverá a Caddy junto con HSTS.
+- **Contraseña del admin:** mínimo 12 caracteres; la CLI nunca la acepta como argumento.
+
 ## Preguntas abiertas
 
-- **Lista de bots para rate limiting y métricas:** ¿se usa una biblioteca externa (ej. `user-agents`) o una lista mantenida manualmente? A decidir en tarea 5.1.
-- **Invalidación de refresh tokens:** ¿lista blanca en Redis o lista negra? A definir en tarea 1.1.
-- **Tamaño máximo de subida de media:** valor específico (ej. 10 MB, 50 MB). A definir en tarea 2.5.
-- **CSP exacto:** los valores concretos dependen de las fuentes de fuentes (fonts), CDN de imágenes y scripts de terceros usados. A definir en tarea 3.6.
+- **CSP con nonces:** quitar `'unsafe-inline'` de `script-src` con nonces de Next.js (requiere
+  renderizado dinámico). Evaluar en la fase 8.

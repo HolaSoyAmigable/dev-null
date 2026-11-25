@@ -184,8 +184,30 @@ Este endpoint vive en Next.js, no en FastAPI. La API lo llama internamente tras 
 
 ---
 
+## Cambios y añadidos al contrato
+
+- `POST /admin/posts/{id}/archive`: archiva un post.
+- `PATCH /admin/media/{id}`: edita el texto alternativo.
+- `GET /admin/metrics/browsers`: distribución por navegador.
+- `GET /public/slugs` devuelve `{ posts: [{slug, updated_at}], projects, tags, categories }`.
+- `GET /public/search` devuelve `SearchResult` con `snippet` (coincidencias entre `<mark>`; el
+  cliente debe escapar el resto del texto).
+- `POST /public/events` acepta cualquier `Content-Type` (sendBeacon envía `text/plain`).
+  `type: "pageview"` responde `202 { accepted, view_token }`; `type: "engagement"` envía ese
+  `view_token` firmado junto con `max_scroll_pct` y `seconds_active`.
+- Código `413` cuando un archivo supera el tamaño máximo.
+- OpenAPI en `/api/v1/openapi.json` (y `/api/v1/docs` fuera de producción), con el schema
+  `ErrorResponse` del sobre de error.
+- `/rss.xml`, `/sitemap.xml` y `/robots.txt` los genera Next.js (blog público) a partir de la API.
+
+## Decisiones
+
+- **`page_size`:** 20 por defecto, 100 máximo (`422` si se supera).
+- **`stack` en proyectos:** array de strings (se eliminan duplicados y vacíos).
+- **Caché de `/rss.xml` y `/sitemap.xml`:** ISR de Next.js (1 h + webhook); Caddy no añade caché.
+- **Caché de endpoints públicos:** Redis, 60 s (`PUBLIC_CACHE_TTL_SECONDS`), invalidada con
+  cualquier escritura del admin.
+
 ## Preguntas abiertas
 
-- **`page_size` máximo y por defecto:** ¿20 por defecto, 100 máximo? A confirmar en tarea 1.5.
-- **Formato de `stack` en proyectos:** ¿array de strings o array de objetos `{name, url}`? A definir en tarea 4.1.
-- **Autenticación del endpoint `/rss.xml` y `/sitemap.xml`:** se sirven públicos sin auth, pero ¿se cachean en Caddy? A definir en tarea 3.5.
+- Ninguna por ahora.

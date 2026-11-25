@@ -1,5 +1,5 @@
 # docker-compose.yml — Entorno de desarrollo local
-# Levanta db y redis por defecto; api requiere --profile app (disponible en tarea 0.3)
+# Levanta db y redis por defecto; api y worker requieren --profile app
 # Uso: ./scripts/dev-up.sh | ./scripts/dev-down.sh
 
 name: devnull
@@ -45,7 +45,6 @@ services:
       start_period: 5s
 
   # ── API (FastAPI) — solo arranca con --profile app ────────────────────────
-  # TODO 0.3: añadir comando de arranque cuando exista el código de la app
   api:
     build:
       context: ../backend
@@ -56,6 +55,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/media
+    volumes:
+      - media_data:/app/media
     ports:
       - "127.0.0.1:${API_PORT:-8000}:8000"
     networks:
@@ -67,13 +69,33 @@ services:
         condition: service_healthy
     profiles:
       - app
-    # TODO 0.3: command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+  # ── Worker (APScheduler) — publicaciones programadas y métricas ───────────
+  worker:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+    networks:
+      - net
+    depends_on:
+      api:
+        condition: service_started
+    profiles:
+      - app
+    command: ["python", "-m", "app.worker"]
 
 # ── Volúmenes nombrados ───────────────────────────────────────────────────────
-# Compose antepone el nombre del proyecto (devnull_) → devnull_pg_data, devnull_redis_data
+# Compose antepone el nombre del proyecto (devnull_) → devnull_pg_data, devnull_redis_data, devnull_media_data
 volumes:
   pg_data:
   redis_data:
+  media_data:
 
 # ── Red interna ───────────────────────────────────────────────────────────────
 # Nombre real: devnull_net

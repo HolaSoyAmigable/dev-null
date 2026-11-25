@@ -66,8 +66,17 @@ El sitio es completamente en español. No hay internacionalización (i18n).
 
 ---
 
+## Decisiones (fase 3.6)
+
+- **Tipografía del cuerpo:** Inter, servida localmente con `next/font` (sin peticiones a terceros
+  en tiempo de ejecución). Logo y encabezados en JetBrains Mono.
+- **Color de acento:** verde terminal `#3fb950` en modo oscuro y `#1a7f37` en modo claro
+  (contraste AA sobre el fondo).
+- **Favicon / logo:** la barra `/` de `dev/null` en color de acento sobre fondo oscuro
+  (`web/src/app/icon.svg`, `admin/public/favicon.svg`).
+- **Nombre del autor:** el seed usa "Oscar Abdel Utrilla Velazquez"; es editable en
+  `site_settings` desde el panel.
+
 ## Preguntas abiertas
 
-- **Tipografía sans-serif del cuerpo:** ¿Inter, Geist, o fuente del sistema? A definir en la fase 3.6 de diseño final.
-- **Color de acento exacto:** a definir en la fase 3.6.
-- **Favicon / logo:** ¿símbolo `/>` o variante tipográfica de `dev/null`? A definir en la fase 3.6.
+- Ninguna por ahora.

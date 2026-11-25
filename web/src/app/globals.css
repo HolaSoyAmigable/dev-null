@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/* Tema terminal sobrio. Oscuro por defecto (.dark en <html>), claro opcional. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+}
+
+/* Contrastes verificados para WCAG AA (texto normal ≥ 4.5:1 sobre --bg). */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --surface-2: #eaeef2;
+  --border: #d0d7de;
+  --fg: #1f2328;
+  --muted: #57606a;
+  --accent: #1a7f37;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #0d1117;
+  --surface: #151b23;
+  --surface-2: #212830;
+  --border: #30363d;
+  --fg: #e6edf3;
+  --muted: #9198a1;
+  --accent: #3fb950;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Código resaltado por Shiki con temas dual (claro/oscuro). */
+.shiki,
+.shiki span {
+  color: var(--shiki-light);
+  background-color: var(--shiki-light-bg);
+}
+
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark);
+  background-color: var(--shiki-dark-bg);
+}
+
+.prose pre.shiki {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+
+.prose :where(code):not(:where(pre *)) {
+  background: var(--surface-2);
+  border-radius: 0.25rem;
+  padding: 0.1em 0.35em;
+  font-weight: 500;
+}
+
+.prose :where(h2, h3) {
+  scroll-margin-top: 5rem;
+}
+
+mark {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: inherit;
+  border-radius: 0.15rem;
+  padding: 0 0.1em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

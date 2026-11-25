@@ -103,20 +103,22 @@ dev-up:         ./scripts/dev-up.sh           # levanta db y redis
 dev-down:       ./scripts/dev-down.sh         # detiene los servicios (conserva volúmenes)
 dev-down-v:     ./scripts/dev-down.sh --volumes  # detiene y elimina volúmenes
 
-# ── Backend ───────────────────────────────────────────────────────────────────
-lint:           ruff check .                  # pendiente (tarea 0.3)
-format:         ruff format .                 # pendiente (tarea 0.3)
-types:          mypy .                        # pendiente (tarea 0.3)
-tests:          pytest                        # pendiente (tarea 0.3)
+# ── Backend (desde backend/) ──────────────────────────────────────────────────
+lint:           uv run ruff check .           # disponible (tarea 0.3)
+format:         uv run ruff format --check .  # disponible (tarea 0.3)
+types:          uv run mypy app               # disponible (tarea 0.3)
+tests:          uv run pytest                 # disponible (tarea 0.3)
 
 # ── Frontend (admin y web) ────────────────────────────────────────────────────
-lint-fe:        pnpm lint                     # pendiente (tarea 2.1 / 3.1)
-types-fe:       pnpm tsc --noEmit             # pendiente (tarea 2.1 / 3.1)
-tests-fe:       pnpm vitest                   # pendiente (tarea 2.1 / 3.1)
-e2e:            pnpm playwright test          # pendiente (tarea 6.4)
+lint-fe:        corepack pnpm lint            # admin + web
+types-fe:       corepack pnpm typecheck       # admin + web + e2e
+tests-fe:       corepack pnpm test            # vitest (admin y web)
+e2e:            corepack pnpm e2e             # Playwright (requiere dev-up)
 
 # ── Generación de tipos ───────────────────────────────────────────────────────
-generate-types: bash scripts/generate-types.sh  # pendiente (tarea 2.1)
+generate-types: bash scripts/generate-types.sh
+backup:         ./infra/backup/backup.sh
+restore:        ./infra/backup/restore.sh backups/<STAMP>
 ```
 
 ### Scripts en Windows
@@ -137,7 +139,14 @@ docker compose -f infra/docker-compose.yml --env-file .env down
 
 ---
 
+## Decisiones
+
+- **Cobertura:** el CI exige ≥ 80 % sobre todo `app/` (services incluidos); sin mínimo por capa.
+- **ESLint:** `eslint-config-next` (core-web-vitals + typescript) en `web`; `typescript-eslint` +
+  `react-hooks` en `admin`. Sin paquete compartido.
+- **TypeScript 5.9:** fijado porque `typescript-eslint` aún no soporta TypeScript 7.
+- **pnpm vía corepack:** `packageManager` en el `package.json` raíz; el lockfile se versiona.
+
 ## Preguntas abiertas
 
-- **Cobertura de tests en routers y repositorios:** el mínimo del 80 % aplica a la capa de services; ¿se requiere un mínimo diferente para las demás capas? A definir al configurar CI (tarea 0.5).
-- **Configuración de eslint:** ¿`eslint-config-next` para web y `eslint` base para admin, o reglas compartidas en un paquete interno? A definir en tareas 2.1 y 3.1.
+- Ninguna por ahora.

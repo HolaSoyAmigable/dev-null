@@ -93,19 +93,20 @@ Antes de implementar cualquier tarea, leer los docs de `/docs` relevantes:
 dev-up:         ./scripts/dev-up.sh           # levanta db y redis
 dev-down:       ./scripts/dev-down.sh         # detiene los servicios
 
-# Backend
-lint:          pendiente (ruff check .)
-types:         pendiente (mypy .)
-tests:         pendiente (pytest)
+# Backend (desde backend/)
+lint:          uv run ruff check .
+format:        uv run ruff format --check .
+types:         uv run mypy app
+tests:         uv run pytest
 
 # Frontend
-lint-fe:       pendiente (eslint)
-types-fe:      pendiente (tsc --noEmit)
-tests-fe:      pendiente (vitest)
-e2e:           pendiente (playwright test)
+lint-fe:       corepack pnpm lint
+types-fe:      corepack pnpm typecheck
+tests-fe:      corepack pnpm test
+e2e:           corepack pnpm e2e
 
 # Generación de tipos
-generate-types: pendiente (scripts/generate-types.sh)
+generate-types: bash scripts/generate-types.sh
 ```
 
 ---

@@ -41,3 +41,6 @@ tests/
 *.log
 *.tmp
 tmp/
+
+# Media subida en desarrollo
+/media/

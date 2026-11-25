@@ -176,7 +176,22 @@ repository.py
 
 ---
 
+## Decisiones
+
+- **Reintentos del webhook (3.4):** hasta 3 intentos con backoff exponencial (1 s, 2 s),
+  configurables con `REVALIDATE_MAX_ATTEMPTS` y `REVALIDATE_BACKOFF_SECONDS`. Cada llamada queda
+  en `webhook_log`. Red de seguridad: `revalidate = 3600`.
+- **Rutas revalidadas:** el post, `/`, `/blog` (y su paginación `/blog/page/[n]`),
+  `/blog/tag/{tag}`, `/blog/category/{cat}`, `/projects` y `/projects/{slug}` si aplica,
+  `/rss.xml` y `/sitemap.xml`. Los cambios de settings envían `"*"`, que revalida todo el sitio.
+- **Desarrollo sin Caddy:** Vite (admin) y Next.js (web) hacen de proxy de `/api/v1` y `/media`
+  hacia la API, así todo funciona en el mismo origen también en local.
+- **Media en desarrollo:** la API sirve `/media` con `StaticFiles` solo si `ENV != production`;
+  en producción la servirá Caddy desde el volumen.
+- **Worker:** proceso aparte (`python -m app.worker`; servicio `worker` en Compose con
+  `--profile app`). Publica lo programado cada minuto y agrega métricas cada noche.
+
 ## Preguntas abiertas
 
-- **Puerto del admin estático:** ¿Caddy lo sirve en un puerto interno o directamente desde el filesystem? A definir en la tarea 0.2 de Docker Compose.
-- **Reintentos del webhook de revalidación:** ¿número máximo de reintentos y backoff? A detallar en la tarea 3.4.
+- **Puerto del admin estático:** ¿Caddy lo sirve desde el filesystem (build de Vite montado como
+  volumen) o desde un contenedor propio? Se decide en la fase 8.2.
