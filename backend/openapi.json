@@ -64,7 +64,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Iniciar sesiÛn",
+        "summary": "Iniciar sesi√≥n",
         "operationId": "login_api_v1_auth_login_post",
         "requestBody": {
           "content": {
@@ -154,7 +154,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Cerrar sesiÛn",
+        "summary": "Cerrar sesi√≥n",
         "operationId": "logout_api_v1_auth_logout_post",
         "parameters": [
           {
@@ -222,7 +222,7 @@
         "tags": [
           "auth"
         ],
-        "summary": "Cambiar contraseÒa",
+        "summary": "Cambiar contrase√±a",
         "operationId": "change_password_api_v1_auth_change_password_post",
         "requestBody": {
           "content": {
@@ -374,11 +374,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "P·gina (desde 1)",
+              "description": "P√°gina (desde 1)",
               "default": 1,
               "title": "Page"
             },
-            "description": "P·gina (desde 1)"
+            "description": "P√°gina (desde 1)"
           },
           {
             "name": "page_size",
@@ -388,11 +388,11 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "description": "Elementos por p·gina",
+              "description": "Elementos por p√°gina",
               "default": 20,
               "title": "Page Size"
             },
-            "description": "Elementos por p·gina"
+            "description": "Elementos por p√°gina"
           }
         ],
         "responses": {
@@ -675,11 +675,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "P·gina (desde 1)",
+              "description": "P√°gina (desde 1)",
               "default": 1,
               "title": "Page"
             },
-            "description": "P·gina (desde 1)"
+            "description": "P√°gina (desde 1)"
           },
           {
             "name": "page_size",
@@ -689,11 +689,11 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "description": "Elementos por p·gina",
+              "description": "Elementos por p√°gina",
               "default": 20,
               "title": "Page Size"
             },
-            "description": "Elementos por p·gina"
+            "description": "Elementos por p√°gina"
           }
         ],
         "responses": {
@@ -821,11 +821,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "P·gina (desde 1)",
+              "description": "P√°gina (desde 1)",
               "default": 1,
               "title": "Page"
             },
-            "description": "P·gina (desde 1)"
+            "description": "P√°gina (desde 1)"
           },
           {
             "name": "page_size",
@@ -835,11 +835,11 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "description": "Elementos por p·gina",
+              "description": "Elementos por p√°gina",
               "default": 20,
               "title": "Page Size"
             },
-            "description": "Elementos por p·gina"
+            "description": "Elementos por p√°gina"
           }
         ],
         "responses": {
@@ -2308,11 +2308,11 @@
             "schema": {
               "type": "integer",
               "minimum": 1,
-              "description": "P·gina (desde 1)",
+              "description": "P√°gina (desde 1)",
               "default": 1,
               "title": "Page"
             },
-            "description": "P·gina (desde 1)"
+            "description": "P√°gina (desde 1)"
           },
           {
             "name": "page_size",
@@ -2322,11 +2322,11 @@
               "type": "integer",
               "maximum": 100,
               "minimum": 1,
-              "description": "Elementos por p·gina",
+              "description": "Elementos por p√°gina",
               "default": 20,
               "title": "Page Size"
             },
-            "description": "Elementos por p·gina"
+            "description": "Elementos por p√°gina"
           }
         ],
         "responses": {
@@ -4832,7 +4832,7 @@
             },
             "type": "array",
             "title": "Stack",
-            "description": "Lista de tecnologÌas"
+            "description": "Lista de tecnolog√≠as"
           },
           "status": {
             "type": "string",
@@ -6618,12 +6618,12 @@
       "ErrorDetail": {
         "properties": {
           "code": {
-            "description": "CÛdigo estable para la m·quina, p. ej. NOT_FOUND",
+            "description": "C√≥digo estable para la m√°quina, p. ej. NOT_FOUND",
             "title": "Code",
             "type": "string"
           },
           "message": {
-            "description": "Mensaje legible en espaÒol",
+            "description": "Mensaje legible en espa√±ol",
             "title": "Message",
             "type": "string"
           },
@@ -6641,7 +6641,7 @@
         "type": "object"
       },
       "ErrorResponse": {
-        "description": "Sobre de error com˙n a todas las respuestas 4xx/5xx.",
+        "description": "Sobre de error com√∫n a todas las respuestas 4xx/5xx.",
         "properties": {
           "error": {
             "$ref": "#/components/schemas/ErrorDetail"

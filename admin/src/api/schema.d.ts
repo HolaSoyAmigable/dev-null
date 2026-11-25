@@ -539,7 +539,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cambiar contrase�a */
+        /** Cambiar contraseña */
         post: operations["change_password_api_v1_auth_change_password_post"];
         delete?: never;
         options?: never;
@@ -556,7 +556,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Iniciar sesi�n */
+        /** Iniciar sesión */
         post: operations["login_api_v1_auth_login_post"];
         delete?: never;
         options?: never;
@@ -573,7 +573,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Cerrar sesi�n */
+        /** Cerrar sesión */
         post: operations["logout_api_v1_auth_logout_post"];
         delete?: never;
         options?: never;
@@ -1022,7 +1022,7 @@ export interface components {
         ErrorDetail: {
             /**
              * Code
-             * @description C�digo estable para la m�quina, p. ej. NOT_FOUND
+             * @description Código estable para la máquina, p. ej. NOT_FOUND
              */
             code: string;
             /** Details */
@@ -1031,13 +1031,13 @@ export interface components {
             };
             /**
              * Message
-             * @description Mensaje legible en espa�ol
+             * @description Mensaje legible en español
              */
             message: string;
         };
         /**
          * ErrorResponse
-         * @description Sobre de error com�n a todas las respuestas 4xx/5xx.
+         * @description Sobre de error común a todas las respuestas 4xx/5xx.
          */
         ErrorResponse: {
             error: components["schemas"]["ErrorDetail"];
@@ -1404,7 +1404,7 @@ export interface components {
             sort_order: number;
             /**
              * Stack
-             * @description Lista de tecnolog�as
+             * @description Lista de tecnologías
              */
             stack?: string[];
             /** Start Date */
@@ -2260,9 +2260,9 @@ export interface operations {
     list_media_api_v1_admin_media_get: {
         parameters: {
             query?: {
-                /** @description P�gina (desde 1) */
+                /** @description Página (desde 1) */
                 page?: number;
-                /** @description Elementos por p�gina */
+                /** @description Elementos por página */
                 page_size?: number;
             };
             header?: never;
@@ -2686,9 +2686,9 @@ export interface operations {
     list_posts_api_v1_admin_posts_get: {
         parameters: {
             query?: {
-                /** @description P�gina (desde 1) */
+                /** @description Página (desde 1) */
                 page?: number;
-                /** @description Elementos por p�gina */
+                /** @description Elementos por página */
                 page_size?: number;
                 q?: string | null;
                 status?: ("draft" | "scheduled" | "published" | "archived") | null;
@@ -3619,9 +3619,9 @@ export interface operations {
         parameters: {
             query?: {
                 category?: string | null;
-                /** @description P�gina (desde 1) */
+                /** @description Página (desde 1) */
                 page?: number;
-                /** @description Elementos por p�gina */
+                /** @description Elementos por página */
                 page_size?: number;
                 project?: string | null;
                 q?: string | null;
@@ -3769,9 +3769,9 @@ export interface operations {
     search_api_v1_public_search_get: {
         parameters: {
             query: {
-                /** @description P�gina (desde 1) */
+                /** @description Página (desde 1) */
                 page?: number;
-                /** @description Elementos por p�gina */
+                /** @description Elementos por página */
                 page_size?: number;
                 q: string;
             };

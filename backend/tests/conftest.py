@@ -22,10 +22,11 @@ _TEST_DEFAULTS = {
     "REFRESH_SECRET": "test-refresh-secret-with-enough-length-0123",
     "METRICS_SALT_SECRET": "test-metrics-salt",
     "REVALIDATE_SECRET": "test-revalidate-secret",
-    "WEB_URL": "http://web.test",
 }
 for _name, _value in _TEST_DEFAULTS.items():
     os.environ.setdefault(_name, _value)
+# Los tests comprueban este valor exacto: debe ganar a cualquier WEB_URL del entorno o de CI.
+os.environ["WEB_URL"] = "http://web.test"
 
 
 def _configure_environment() -> tuple[str, str]:
