@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import type { PostSummary } from "@/lib/api/client";
-import { formatDate } from "@/lib/format";
+import { formatDate, githubRepoUrl, seriesLabel } from "@/lib/format";
 
 export function TagLinks({ tags }: { tags: PostSummary["tags"] }) {
   if (!tags.length) return null;
@@ -44,10 +44,34 @@ export function PostMeta({ post }: { post: PostSummary }) {
   );
 }
 
+/** Repositorio de GitHub y posición en la serie del proyecto (solo se muestran si existen). */
+export function PostDevLinks({ post }: { post: PostSummary }) {
+  const repoUrl = githubRepoUrl(post.github_repo);
+  const series = seriesLabel(post);
+  if (!repoUrl && !series) return null;
+  return (
+    <p className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs">
+      {series && post.project ? (
+        <Link href={`/projects/${post.project.slug}`} className="text-muted hover:text-accent">
+          {series}
+        </Link>
+      ) : null}
+      {repoUrl ? (
+        <a href={repoUrl} target="_blank" rel="noopener noreferrer" className="text-muted hover:text-accent">
+          <span aria-hidden>⎇ </span>
+          <span className="sr-only">Repositorio: </span>
+          {post.github_repo}
+        </a>
+      ) : null}
+    </p>
+  );
+}
+
 export function PostCard({ post, headingLevel = "h2" }: { post: PostSummary; headingLevel?: "h2" | "h3" }) {
   const Heading = headingLevel;
   return (
     <article className="group py-6">
+      {post.featured ? <p className="mb-1 font-mono text-xs text-accent">★ destacado</p> : null}
       <PostMeta post={post} />
       <Heading className="mt-1 font-mono text-lg font-semibold tracking-tight">
         <Link href={`/blog/${post.slug}`} className="transition-colors group-hover:text-accent">

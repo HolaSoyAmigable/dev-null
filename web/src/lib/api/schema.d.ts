@@ -436,6 +436,10 @@ export interface components {
             cover: components["schemas"]["PublicMedia"] | null;
             /** Excerpt */
             excerpt: string | null;
+            /** Featured */
+            featured: boolean;
+            /** Github Repo */
+            github_repo: string | null;
             og_media: components["schemas"]["PublicMedia"] | null;
             project: components["schemas"]["PublicProjectRef"] | null;
             /** Published At */
@@ -446,6 +450,8 @@ export interface components {
             seo_description: string | null;
             /** Seo Title */
             seo_title: string | null;
+            /** Series Order */
+            series_order: number | null;
             /** Slug */
             slug: string;
             /** Tags */
@@ -464,11 +470,17 @@ export interface components {
             cover: components["schemas"]["PublicMedia"] | null;
             /** Excerpt */
             excerpt: string | null;
+            /** Featured */
+            featured: boolean;
+            /** Github Repo */
+            github_repo: string | null;
             project: components["schemas"]["PublicProjectRef"] | null;
             /** Published At */
             published_at: string | null;
             /** Reading Minutes */
             reading_minutes: number;
+            /** Series Order */
+            series_order: number | null;
             /** Slug */
             slug: string;
             /** Tags */
@@ -608,11 +620,17 @@ export interface components {
             cover: components["schemas"]["PublicMedia"] | null;
             /** Excerpt */
             excerpt: string | null;
+            /** Featured */
+            featured: boolean;
+            /** Github Repo */
+            github_repo: string | null;
             project: components["schemas"]["PublicProjectRef"] | null;
             /** Published At */
             published_at: string | null;
             /** Reading Minutes */
             reading_minutes: number;
+            /** Series Order */
+            series_order: number | null;
             /** Slug */
             slug: string;
             /**
@@ -799,6 +817,8 @@ export interface operations {
         parameters: {
             query?: {
                 category?: string | null;
+                /** @description Solo posts fijados en la portada */
+                featured?: boolean | null;
                 /** @description Página (desde 1) */
                 page?: number;
                 /** @description Elementos por página */

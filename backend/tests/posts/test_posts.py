@@ -344,3 +344,121 @@ async def test_update_published_post_revalidates_old_and_new_slug(
     paths = revalidations[-1][1]
     assert f"/blog/{post['slug']}" in paths
     assert "/blog/nuevo-slug" in paths
+
+
+# ── Metadatos de desarrollo: repositorio, serie y destacado ──────────────────
+
+
+def test_normalize_github_repo() -> None:
+    from app.modules.posts.schemas import normalize_github_repo
+
+    assert normalize_github_repo(" Usuario/mi-repo ") == "Usuario/mi-repo"
+    assert normalize_github_repo("https://github.com/usuario/mi-repo.git") == "usuario/mi-repo"
+    assert normalize_github_repo("https://www.github.com/usuario/mi-repo/tree/main") == (
+        "usuario/mi-repo"
+    )
+    assert normalize_github_repo("") is None
+    assert normalize_github_repo(None) is None
+    for invalid in ("solo-nombre", "https://gitlab.com/a/b", "a/b/c", "-malo/repo", "a/.."):
+        try:
+            normalize_github_repo(invalid)
+        except ValueError:
+            continue
+        raise AssertionError(f"{invalid!r} debería ser inválido")
+
+
+async def test_github_repo_is_normalized_and_validated(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    post = await create_post(
+        client, auth_headers, github_repo="https://github.com/HolaSoyAmigable/dev-null.git"
+    )
+    assert post["github_repo"] == "HolaSoyAmigable/dev-null"
+
+    response = await client.patch(
+        f"{API}/admin/posts/{post['id']}", json={"github_repo": None}, headers=auth_headers
+    )
+    assert response.json()["github_repo"] is None
+
+    bad = await client.post(
+        f"{API}/admin/posts",
+        json={"title": "X", "github_repo": "no es un repo"},
+        headers=auth_headers,
+    )
+    assert bad.status_code == 422
+
+
+async def test_series_order_requires_a_project(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    project = await create_project(client, auth_headers, "Bitácora")
+
+    orphan = await client.post(
+        f"{API}/admin/posts",
+        json={"title": "Sin proyecto", "series_order": 1},
+        headers=auth_headers,
+    )
+    assert orphan.status_code == 422
+    assert orphan.json()["error"]["code"] == "SERIES_REQUIRES_PROJECT"
+
+    zero = await client.post(
+        f"{API}/admin/posts",
+        json={"title": "Cero", "project_id": project["id"], "series_order": 0},
+        headers=auth_headers,
+    )
+    assert zero.status_code == 422
+
+    post = await create_post(client, auth_headers, project_id=project["id"], series_order=3)
+    assert (post["project"]["slug"], post["series_order"]) == ("bitacora", 3)
+
+    # Quitar el proyecto sin tocar el orden también limpia el orden.
+    cleared = await client.patch(
+        f"{API}/admin/posts/{post['id']}", json={"project_id": None}, headers=auth_headers
+    )
+    assert cleared.status_code == 200
+    assert (cleared.json()["project"], cleared.json()["series_order"]) == (None, None)
+
+    # Duplicar no hereda la posición en la serie.
+    again = await create_post(client, auth_headers, project_id=project["id"], series_order=2)
+    copy = await client.post(f"{API}/admin/posts/{again['id']}/duplicate", headers=auth_headers)
+    assert copy.json()["series_order"] is None
+
+
+async def test_featured_posts_are_exposed_and_filterable(
+    client: AsyncClient, auth_headers: dict[str, str], revalidations: list[tuple[str, list[str]]]
+) -> None:
+    project = await create_project(client, auth_headers, "Destacados")
+    pinned = await create_post(
+        client,
+        auth_headers,
+        title="Fijado",
+        featured=True,
+        github_repo="usuario/repo",
+        project_id=project["id"],
+        series_order=2,
+    )
+    normal = await create_post(client, auth_headers, title="Normal")
+    assert (pinned["featured"], normal["featured"]) == (True, False)
+    await publish(client, auth_headers, pinned["id"])
+    await publish(client, auth_headers, normal["id"])
+
+    featured = (await client.get(f"{API}/public/posts?featured=true")).json()
+    assert [item["title"] for item in featured["items"]] == ["Fijado"]
+    assert featured["items"][0]["github_repo"] == "usuario/repo"
+    assert featured["items"][0]["series_order"] == 2
+
+    everything = (await client.get(f"{API}/public/posts")).json()
+    assert {item["title"]: item["featured"] for item in everything["items"]} == {
+        "Fijado": True,
+        "Normal": False,
+    }
+
+    # Cambiar el destacado de un post publicado invalida la caché pública y revalida el sitio.
+    revalidations.clear()
+    response = await client.patch(
+        f"{API}/admin/posts/{normal['id']}", json={"featured": True}, headers=auth_headers
+    )
+    assert response.json()["featured"] is True
+    assert revalidations
+    featured = (await client.get(f"{API}/public/posts?featured=true")).json()
+    assert featured["total"] == 2

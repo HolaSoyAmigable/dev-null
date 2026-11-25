@@ -68,14 +68,15 @@ async def list_posts(
     tag: SlugQ = None,
     category: SlugQ = None,
     project: SlugQ = None,
+    featured: Annotated[bool | None, Query(description="Solo posts fijados en la portada")] = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
 ) -> Page[PublicPostSummary]:
     async def load() -> Page[PublicPostSummary]:
         return await posts_service.public_list(
-            session, params, tag=tag, category=category, project=project, q=q
+            session, params, tag=tag, category=category, project=project, featured=featured, q=q
         )
 
-    key = cache_key("posts", params.page, params.page_size, tag, category, project, q)
+    key = cache_key("posts", params.page, params.page_size, tag, category, project, featured, q)
     return await cached_json(redis, key, _PostPage, load)
 
 

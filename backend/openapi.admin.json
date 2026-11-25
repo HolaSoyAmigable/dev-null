@@ -3526,6 +3526,33 @@
             ],
             "title": "Og Media Id"
           },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo",
+            "description": "Repositorio de GitHub: `usuario/repositorio` o URL (se guarda normalizado)"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order",
+            "description": "Posición en la serie del proyecto (solo con proyecto asociado)"
+          },
           "title": {
             "type": "string",
             "maxLength": 300,
@@ -3556,6 +3583,11 @@
             },
             "type": "array",
             "title": "Tag Ids"
+          },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured",
+            "default": false
           }
         },
         "type": "object",
@@ -3621,6 +3653,10 @@
             "type": "integer",
             "title": "Reading Minutes"
           },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured"
+          },
           "category": {
             "anyOf": [
               {
@@ -3659,6 +3695,7 @@
           "scheduled_for",
           "updated_at",
           "reading_minutes",
+          "featured",
           "category",
           "project",
           "tags"
@@ -3764,6 +3801,10 @@
           "reading_minutes": {
             "type": "integer",
             "title": "Reading Minutes"
+          },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured"
           },
           "category": {
             "anyOf": [
@@ -3908,6 +3949,28 @@
               }
             ],
             "title": "Canonical Url"
+          },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order"
           }
         },
         "type": "object",
@@ -3920,6 +3983,7 @@
           "scheduled_for",
           "updated_at",
           "reading_minutes",
+          "featured",
           "category",
           "project",
           "tags",
@@ -3934,7 +3998,9 @@
           "og_media",
           "seo_title",
           "seo_description",
-          "canonical_url"
+          "canonical_url",
+          "github_repo",
+          "series_order"
         ],
         "title": "PostRead"
       },
@@ -4032,6 +4098,33 @@
             ],
             "title": "Og Media Id"
           },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo",
+            "description": "Repositorio de GitHub: `usuario/repositorio` o URL (se guarda normalizado)"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 9999.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order",
+            "description": "Posición en la serie del proyecto (solo con proyecto asociado)"
+          },
           "title": {
             "anyOf": [
               {
@@ -4082,6 +4175,17 @@
               }
             ],
             "title": "Tag Ids"
+          },
+          "featured": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Featured"
           }
         },
         "type": "object",

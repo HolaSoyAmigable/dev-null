@@ -936,6 +936,16 @@ export interface components {
             cover_media_id?: number | null;
             /** Excerpt */
             excerpt?: string | null;
+            /**
+             * Featured
+             * @default false
+             */
+            featured: boolean;
+            /**
+             * Github Repo
+             * @description Repositorio de GitHub: `usuario/repositorio` o URL (se guarda normalizado)
+             */
+            github_repo?: string | null;
             /** Og Media Id */
             og_media_id?: number | null;
             /** Project Id */
@@ -944,6 +954,11 @@ export interface components {
             seo_description?: string | null;
             /** Seo Title */
             seo_title?: string | null;
+            /**
+             * Series Order
+             * @description Posición en la serie del proyecto (solo con proyecto asociado)
+             */
+            series_order?: number | null;
             /** Slug */
             slug?: string | null;
             /** Tag Ids */
@@ -954,6 +969,8 @@ export interface components {
         /** PostListItem */
         PostListItem: {
             category: components["schemas"]["CategoryRead"] | null;
+            /** Featured */
+            featured: boolean;
             /** Id */
             id: number;
             project: components["schemas"]["ProjectRef"] | null;
@@ -1013,6 +1030,10 @@ export interface components {
             created_at: string;
             /** Excerpt */
             excerpt: string | null;
+            /** Featured */
+            featured: boolean;
+            /** Github Repo */
+            github_repo: string | null;
             /** Id */
             id: number;
             og_media: components["schemas"]["MediaRead"] | null;
@@ -1031,6 +1052,8 @@ export interface components {
             seo_description: string | null;
             /** Seo Title */
             seo_title: string | null;
+            /** Series Order */
+            series_order: number | null;
             /** Slug */
             slug: string;
             /**
@@ -1060,6 +1083,13 @@ export interface components {
             cover_media_id?: number | null;
             /** Excerpt */
             excerpt?: string | null;
+            /** Featured */
+            featured?: boolean | null;
+            /**
+             * Github Repo
+             * @description Repositorio de GitHub: `usuario/repositorio` o URL (se guarda normalizado)
+             */
+            github_repo?: string | null;
             /** Og Media Id */
             og_media_id?: number | null;
             /** Project Id */
@@ -1068,6 +1098,11 @@ export interface components {
             seo_description?: string | null;
             /** Seo Title */
             seo_title?: string | null;
+            /**
+             * Series Order
+             * @description Posición en la serie del proyecto (solo con proyecto asociado)
+             */
+            series_order?: number | null;
             /** Slug */
             slug?: string | null;
             /** Tag Ids */

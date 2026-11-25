@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Markdown } from "@/components/Markdown";
-import { PostList, PostMeta, TagLinks } from "@/components/PostList";
+import { PostDevLinks, PostList, PostMeta, TagLinks } from "@/components/PostList";
 import { getPost, getRelated, getSettings, getSlugs } from "@/lib/data";
 import { extractToc, siteUrl } from "@/lib/format";
 
@@ -77,6 +77,7 @@ export default async function PostPage({ params }: Props) {
         {post.excerpt ? <p className="mt-4 text-lg text-muted">{post.excerpt}</p> : null}
         <div className="mt-5 space-y-3">
           <PostMeta post={post} />
+          <PostDevLinks post={post} />
           <TagLinks tags={post.tags} />
         </div>
       </header>

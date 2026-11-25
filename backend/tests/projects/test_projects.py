@@ -63,3 +63,24 @@ async def test_public_projects_include_log_posts(
     detail = (await client.get(f"{API}/public/projects/compilador")).json()
     assert [p["title"] for p in detail["posts"]] == ["Bitácora 1"]
     assert (await client.get(f"{API}/public/projects/nada")).status_code == 404
+
+
+async def test_project_log_orders_posts_by_series(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> None:
+    from tests.helpers import create_post, create_project, publish
+
+    project = await create_project(client, auth_headers, "Serie")
+    ids = {}
+    for title, order in (("Tercero", 3), ("Primero", 1), ("Suelto", None), ("Segundo", 2)):
+        fields = {"project_id": project["id"]}
+        if order is not None:
+            fields["series_order"] = order
+        post = await create_post(client, auth_headers, title=title, **fields)
+        await publish(client, auth_headers, post["id"])
+        ids[title] = post["id"]
+
+    detail = (await client.get("/api/v1/public/projects/serie")).json()
+    titles = [post["title"] for post in detail["posts"]]
+    assert titles == ["Primero", "Segundo", "Tercero", "Suelto"]
+    assert [post["series_order"] for post in detail["posts"]] == [1, 2, 3, None]

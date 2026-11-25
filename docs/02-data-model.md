@@ -47,9 +47,13 @@
 | `seo_description` | `text` | nullable |
 | `canonical_url` | `varchar` | nullable |
 | `og_media_id` | `integer` | FK → `media.id`, nullable |
+| `github_repo` | `varchar(200)` | nullable; se guarda normalizado como `usuario/repositorio` (migración `0003`) |
+| `series_order` | `integer` | nullable; posición en la serie del proyecto (≥ 1). Solo tiene sentido con `project_id` |
+| `featured` | `boolean` | not null, por defecto `false`; fija el post en la portada |
 | `search_vector` | `tsvector` | mantenido por trigger; índice GIN |
 
-**Índices:** `slug` (unique), `status`, `published_at`, `search_vector` (GIN).
+**Índices:** `slug` (unique), `status`, `published_at`, `featured`, `search_vector` (GIN).
+**Restricciones:** `series_order IS NULL OR series_order >= 1`. La regla "el orden requiere proyecto" se valida en el servicio (un `CHECK` fallaría al borrar un proyecto, que deja `project_id` en `NULL`).
 
 ---
 

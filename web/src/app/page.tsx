@@ -7,9 +7,17 @@ import { getPosts, getProjects, getSettings } from "@/lib/data";
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const [settings, posts, projects] = await Promise.all([getSettings(), getPosts({ pageSize: 5 }), getProjects()]);
+  const [settings, pinned, posts, projects] = await Promise.all([
+    getSettings(),
+    getPosts({ pageSize: 3, featured: true }),
+    getPosts({ pageSize: 8 }),
+    getProjects(),
+  ]);
   const featured = projects.filter((p) => p.featured).slice(0, 4);
   const shown = featured.length ? featured : projects.slice(0, 4);
+  // Los fijados van arriba y no se repiten en "Últimas publicaciones".
+  const pinnedSlugs = new Set(pinned.items.map((p) => p.slug));
+  const latest = posts.items.filter((p) => !pinnedSlugs.has(p.slug)).slice(0, 5);
 
   return (
     <>
@@ -30,6 +38,15 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {pinned.items.length ? (
+        <section className="border-b border-border py-12" aria-labelledby="pinned">
+          <h2 id="pinned" className="font-mono text-xl font-semibold">
+            Destacados
+          </h2>
+          <PostList posts={pinned.items} headingLevel="h3" />
+        </section>
+      ) : null}
+
       <section className="py-12" aria-labelledby="latest">
         <div className="flex items-baseline justify-between">
           <h2 id="latest" className="font-mono text-xl font-semibold">
@@ -39,7 +56,7 @@ export default async function HomePage() {
             ls /blog →
           </Link>
         </div>
-        <PostList posts={posts.items} headingLevel="h3" />
+        <PostList posts={latest} headingLevel="h3" />
       </section>
 
       {shown.length ? (

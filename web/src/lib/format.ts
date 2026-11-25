@@ -10,6 +10,21 @@ const monthFormatter = new Intl.DateTimeFormat("es-MX", {
   timeZone: "UTC",
 });
 
+const GITHUB_REPO = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
+
+/** URL del repositorio a partir de `usuario/repositorio`; `null` si el formato no es el esperado. */
+export function githubRepoUrl(repo: string | null | undefined): string | null {
+  return repo && GITHUB_REPO.test(repo) ? `https://github.com/${repo}` : null;
+}
+
+/** "Parte 2 · Mi proyecto" para posts dentro de la bitácora de un proyecto. */
+export function seriesLabel(post: {
+  series_order?: number | null;
+  project?: { name: string } | null;
+}): string | null {
+  return post.project && post.series_order ? `Parte ${post.series_order} · ${post.project.name}` : null;
+}
+
 export function formatDate(value: string | null | undefined): string {
   return value ? dateFormatter.format(new Date(value)) : "";
 }

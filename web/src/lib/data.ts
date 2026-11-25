@@ -39,7 +39,14 @@ export const getSettings = cache(
     fetchWithFallback(api.GET("/api/v1/public/settings"), DEFAULT_SETTINGS),
 );
 
-type PostFilters = { page?: number; pageSize?: number; tag?: string; category?: string; project?: string };
+type PostFilters = {
+  page?: number;
+  pageSize?: number;
+  tag?: string;
+  category?: string;
+  project?: string;
+  featured?: boolean;
+};
 
 export async function getPosts(filters: PostFilters = {}): Promise<PostPage> {
   const page = filters.page ?? 1;
@@ -53,6 +60,7 @@ export async function getPosts(filters: PostFilters = {}): Promise<PostPage> {
           tag: filters.tag,
           category: filters.category,
           project: filters.project,
+          featured: filters.featured,
         },
       },
     }),

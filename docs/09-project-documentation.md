@@ -29,7 +29,7 @@ Blog personal con tres pilares: **carrera**, **proyectos** y **publicaciones**. 
 | Base de datos | PostgreSQL 16, Redis 7 |
 | Panel admin | React + Vite + TypeScript, TanStack Query, React Hook Form + Zod, shadcn/ui, Tailwind, Recharts |
 | Blog público | Next.js (App Router) + TypeScript + Tailwind, ISR |
-| Contenido | Markdown: react-markdown, remark-gfm, rehype-sanitize, shiki |
+| Contenido | Markdown: react-markdown, remark-gfm, remark-math + rehype-katex (KaTeX), rehype-sanitize, shiki; diagramas con Mermaid |
 | Paquetes JS | pnpm con workspaces (`admin`, `web`, `e2e`) |
 | Proxy (producción) | Caddy |
 | CI | GitHub Actions |
@@ -114,7 +114,7 @@ Tablas (detalle completo en [02-data-model.md](02-data-model.md)):
 | Tabla | Contenido |
 |---|---|
 | `users` | Administrador (email único, hash Argon2id, rol, activo) |
-| `posts` | Título, slug único, extracto, `content_md`, estado (`draft`, `scheduled`, `published`, `archived`), SEO, `search_vector` (FTS en español, GIN) |
+| `posts` | Título, slug único, extracto, `content_md`, estado (`draft`, `scheduled`, `published`, `archived`), SEO, `github_repo`, `series_order`, `featured`, `search_vector` (FTS en español, GIN) |
 | `post_revisions` | Historial de título y contenido |
 | `projects` | Proyectos con stack, estado, URLs `http(s)`, fechas |
 | `categories`, `tags`, `post_tags` | Taxonomía |
@@ -125,7 +125,7 @@ Tablas (detalle completo en [02-data-model.md](02-data-model.md)):
 | `daily_stats` | Agregados diarios (global y por post); índice único `NULLS NOT DISTINCT` |
 | `webhook_log` | Registro de llamadas de revalidación |
 
-Migraciones: `backend/alembic/versions/` (`0001` esquema inicial, `0002` trigger del vector de búsqueda y *seed* de settings).
+Migraciones: `backend/alembic/versions/` (`0001` esquema inicial, `0002` trigger del vector de búsqueda y *seed* de settings, `0003` metadatos de desarrollo de los posts).
 
 ---
 
@@ -203,10 +203,26 @@ Cada API publica su OpenAPI, que es la fuente de verdad de su contrato: `backend
 - El **access token vive solo en memoria**; el refresh es una cookie `httpOnly` que el navegador envía a `/api/v1/auth`. Un 401 dispara un refresh automático con reintento.
 - Marca el navegador del admin con `localStorage.devnull_admin` para excluirlo de las métricas.
 
+#### Editor de posts
+
+El formulario (`features/posts/PostEditorPage.tsx`) delega en componentes pequeños de `features/posts/editor/`:
+
+| Pieza | Función |
+|---|---|
+| `MarkdownEditor.tsx` + `SnippetToolbar.tsx` + `snippets.ts` | Textarea con barra de accesos rápidos (`ts`, `kt`, `py`, `sql`, `bash`, `mermaid`, `$$`). Inserta bloques en el cursor (o al final si aún no se ha colocado), envuelve la selección y separa con líneas en blanco. |
+| `MarkdownEditor.tsx` | **Arrastrar o pegar imágenes**: se suben a `/admin/media` (máx. 10 MB; PNG, JPEG, GIF, WebP, AVIF) y se inserta `![alt](url)` en el cursor, con un marcador mientras sube. |
+| `EditorStats.tsx` + `lib/markdownStats.ts` | "450 palabras • 3 min de lectura" en tiempo real; mismo cálculo que el backend (200 ppm, código a la mitad). |
+| `draft.ts` + `DraftNotice.tsx` | **Autoguardado local** cada 30 s en `localStorage` (`devnull:draft:post:<id>` o `…:new`), indicador "Borrador guardado localmente", y aviso para restaurar o descartar al reabrir. Se borra al guardar en el servidor. |
+| `DevMetadataFields.tsx` | En "Organización": repositorio de GitHub, orden en la serie (activo solo con proyecto) e interruptor "Fijar en la portada". |
+| `components/MarkdownPreview.tsx` + `MermaidDiagram.tsx` | Vista previa con GFM, **KaTeX** (`$…$`, `$$…$$`) y **Mermaid** (carga diferida, `securityLevel: "strict"`). |
+
+Los campos y *bindings* originales del formulario (`title`, `slug`, `excerpt`, `category_id`, `project_id`, `tag_ids`, portada, SEO, `canonical_url`, imagen OG) no cambian. Los tipos del payload salen del OpenAPI (`PostCreate`) y `postForm.ts` valida los campos nuevos.
+
 ### 7.2 Blog público (`web/`)
 
 - Next.js App Router con ISR; páginas: inicio, blog (paginado, por tag y categoría), post, proyectos, carrera, acerca de, búsqueda, `rss.xml`, `sitemap.xml`, `robots.txt`.
-- Markdown renderizado en servidor con saneado (`rehype-sanitize`) y resaltado Shiki.
+- Markdown renderizado en servidor con saneado (`rehype-sanitize`), resaltado Shiki y fórmulas KaTeX. Los diagramas Mermaid se dibujan en el navegador (con el código fuente como respaldo).
+- La portada muestra primero los posts **destacados** (`featured`); cada post muestra su repositorio de GitHub y su posición en la serie; la bitácora de un proyecto ordena sus posts por `series_order`.
 - Cabeceras de seguridad y CSP en `next.config.ts`.
 - `/api/revalidate` recibe el webhook de la API (secreto comparado en tiempo constante).
 

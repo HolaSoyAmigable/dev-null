@@ -93,12 +93,31 @@ async def _apply_references(
             await _check_reference(session, model, value)
             setattr(post, field, value)
 
+    _apply_series(post, data)
+
     if data.tag_ids is not None and ("tag_ids" in fields or isinstance(data, PostCreate)):
         unique_ids = list(dict.fromkeys(data.tag_ids))
         tags = await taxonomy_repository.get_tags_by_ids(session, unique_ids)
         if len(tags) != len(unique_ids):
             raise ValidationError("Alguna etiqueta no existe.", code="INVALID_REFERENCE")
         post.tags = list(tags)
+
+
+def _apply_series(post: Post, data: PostCreate | PostUpdate) -> None:
+    """Apply `series_order`, which only makes sense inside a project's log.
+
+    Quitar el proyecto sin tocar el orden también limpia el orden; enviar un orden en un
+    post sin proyecto es un error de validación.
+    """
+    fields = data.model_fields_set
+    if "series_order" in fields:
+        post.series_order = data.series_order
+    elif "project_id" in fields and data.project_id is None:
+        post.series_order = None
+    if post.series_order is not None and post.project_id is None:
+        raise ValidationError(
+            "El orden en la serie requiere un proyecto asociado.", code="SERIES_REQUIRES_PROJECT"
+        )
 
 
 async def _reload(session: AsyncSession, post_id: int) -> Post:
@@ -155,6 +174,8 @@ async def create(session: AsyncSession, user: User, data: PostCreate) -> Post:
         seo_title=data.seo_title,
         seo_description=data.seo_description,
         canonical_url=data.canonical_url,
+        github_repo=data.github_repo,
+        featured=data.featured,
         tags=[],
     )
     await _apply_references(session, post, data)
@@ -183,9 +204,11 @@ async def update(
         post.content_md = data.content_md
         post.reading_minutes = reading_minutes(data.content_md)
         content_changed = True
-    for field in ("excerpt", "seo_title", "seo_description", "canonical_url"):
+    for field in ("excerpt", "seo_title", "seo_description", "canonical_url", "github_repo"):
         if field in fields:
             setattr(post, field, getattr(data, field))
+    if data.featured is not None:
+        post.featured = data.featured
     await _apply_references(session, post, data)
 
     if content_changed:
@@ -228,6 +251,8 @@ async def duplicate(session: AsyncSession, user: User, post_id: int) -> Post:
         og_media_id=source.og_media_id,
         seo_title=source.seo_title,
         seo_description=source.seo_description,
+        github_repo=source.github_repo,
+        series_order=None,  # la copia no hereda posición: evita dos posts con el mismo orden.
         tags=list(source.tags),
     )
     session.add(copy)
@@ -354,6 +379,7 @@ async def public_list(
     tag: str | None = None,
     category: str | None = None,
     project: str | None = None,
+    featured: bool | None = None,
     q: str | None = None,
 ) -> Page[PublicPostSummary]:
     if q:
@@ -369,6 +395,7 @@ async def public_list(
         tag=tag,
         category=category,
         project=project,
+        featured=featured,
         offset=params.offset,
         limit=params.page_size,
     )

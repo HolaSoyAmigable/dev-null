@@ -2,7 +2,18 @@
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, String, Table, Text, func
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +36,7 @@ class Post(Base):
     __tablename__ = "posts"
     __table_args__ = (
         CheckConstraint(f"status IN {POST_STATUSES}", name="status_valid"),
+        CheckConstraint("series_order IS NULL OR series_order >= 1", name="series_order_positive"),
         Index("ix_posts_search_vector", "search_vector", postgresql_using="gin"),
     )
 
@@ -55,6 +67,13 @@ class Post(Base):
     seo_description: Mapped[str | None] = mapped_column(Text)
     canonical_url: Mapped[str | None] = mapped_column(String(500))
     og_media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
+    # Metadatos de desarrollo: repositorio (`usuario/repositorio`), orden en la serie del
+    # proyecto (bitácora) y post fijado en la portada.
+    github_repo: Mapped[str | None] = mapped_column(String(200))
+    series_order: Mapped[int | None] = mapped_column(Integer)
+    featured: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", index=True
+    )
     # Contador de guardados desde la última revisión (para revisiones cada N guardados).
     saves_since_revision: Mapped[int] = mapped_column(default=0, server_default="0")
     # Mantenido por trigger en PostgreSQL; nunca se escribe desde la aplicación.

@@ -155,6 +155,24 @@
             }
           },
           {
+            "name": "featured",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Solo posts fijados en la portada",
+              "title": "Featured"
+            },
+            "description": "Solo posts fijados en la portada"
+          },
+          {
             "name": "q",
             "in": "query",
             "required": false,
@@ -900,6 +918,32 @@
             "type": "integer",
             "title": "Reading Minutes"
           },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured"
+          },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order"
+          },
           "cover": {
             "anyOf": [
               {
@@ -993,6 +1037,9 @@
           "published_at",
           "updated_at",
           "reading_minutes",
+          "featured",
+          "github_repo",
+          "series_order",
           "cover",
           "category",
           "project",
@@ -1047,6 +1094,32 @@
             "type": "integer",
             "title": "Reading Minutes"
           },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured"
+          },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order"
+          },
           "cover": {
             "anyOf": [
               {
@@ -1093,6 +1166,9 @@
           "published_at",
           "updated_at",
           "reading_minutes",
+          "featured",
+          "github_repo",
+          "series_order",
           "cover",
           "category",
           "project",
@@ -1525,6 +1601,32 @@
             "type": "integer",
             "title": "Reading Minutes"
           },
+          "featured": {
+            "type": "boolean",
+            "title": "Featured"
+          },
+          "github_repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Repo"
+          },
+          "series_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Series Order"
+          },
           "cover": {
             "anyOf": [
               {
@@ -1576,6 +1678,9 @@
           "published_at",
           "updated_at",
           "reading_minutes",
+          "featured",
+          "github_repo",
+          "series_order",
           "cover",
           "category",
           "project",

@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft, BarChart3, ExternalLink, History } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useForm, type UseFormRegister } from "react-hook-form";
+import { useEffect, useRef, useState } from "react";
+import { Controller, useForm, type UseFormRegister } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router";
 
 import {
@@ -25,6 +25,12 @@ import { Input, Select, Textarea } from "@/components/ui/input";
 import { MediaDialog, MediaPicker } from "@/features/media/MediaPicker";
 import { cn, formatDateTime, slugify, toLocalInputValue } from "@/lib/utils";
 
+import { DevMetadataFields } from "./editor/DevMetadataFields";
+import { clearDraft, draftKey, findRestorableDraft, useDraftAutosave } from "./editor/draft";
+import { DraftRestoreBanner, DraftStatusLabel } from "./editor/DraftNotice";
+import { EditorStats } from "./editor/EditorStats";
+import { MarkdownEditor, type MarkdownEditorHandle } from "./editor/MarkdownEditor";
+import { imageMarkdown } from "./editor/snippets";
 import {
   postFormSchema,
   toFormValues,
@@ -73,12 +79,26 @@ function PostEditor({ post }: { post: Post | undefined }) {
   });
   const {
     register,
+    control,
     handleSubmit,
     watch,
     setValue,
     reset,
     formState: { errors, isDirty, isSubmitting },
   } = form;
+
+  // Autoguardado local de borradores (localStorage, cada 30 s) y restauración al abrir.
+  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const storageKey = draftKey(post?.id);
+  const [restorable, setRestorable] = useState(() =>
+    findRestorableDraft<PostFormInput>(storageKey, toFormValues(post), post?.updated_at ?? null),
+  );
+  const draft = useDraftAutosave<PostFormInput>({
+    storageKey,
+    values: watch(),
+    dirty: isDirty,
+    baseUpdatedAt: post?.updated_at ?? null,
+  });
 
   const mediaDirty = (cover?.id ?? null) !== (post?.cover_media_id ?? null) ||
     (og?.id ?? null) !== (post?.og_media_id ?? null);
@@ -97,10 +117,14 @@ function PostEditor({ post }: { post: Post | undefined }) {
     if (post) {
       const saved = await update.mutateAsync(payload);
       reset(toFormValues(saved));
+      draft.discard(); // lo guardado en el servidor sustituye al borrador local
+      setRestorable(null);
       setSavedAt(saved.updated_at);
     } else {
       const created = await create.mutateAsync(payload);
       reset(toFormValues(created));
+      draft.discard();
+      setRestorable(null);
       navigate(`/posts/${created.id}`, { replace: true });
     }
   });
@@ -131,7 +155,14 @@ function PostEditor({ post }: { post: Post | undefined }) {
   const seoTitle = watch("seo_title");
   const seoDescription = watch("seo_description");
   const excerpt = watch("excerpt");
+  const projectId = watch("project_id");
+  const seriesOrder = watch("series_order");
   const mutationError = create.error ?? update.error ?? action.error ?? schedule.error;
+
+  // El orden en la serie solo existe dentro de un proyecto: al quitarlo se limpia el campo.
+  useEffect(() => {
+    if (!projectId && seriesOrder) setValue("series_order", "", { shouldDirty: true });
+  }, [projectId, seriesOrder, setValue]);
 
   return (
     <>
@@ -184,6 +215,21 @@ function PostEditor({ post }: { post: Post | undefined }) {
 
       <ErrorNotice error={mutationError} />
 
+      {restorable ? (
+        <DraftRestoreBanner
+          savedAt={restorable.savedAt}
+          onRestore={() => {
+            // Se conservan los valores originales como referencia: lo restaurado cuenta como cambio sin guardar.
+            reset(restorable.values, { keepDefaultValues: true });
+            setRestorable(null);
+          }}
+          onDiscard={() => {
+            clearDraft(storageKey);
+            setRestorable(null);
+          }}
+        />
+      ) : null}
+
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -207,41 +253,48 @@ function PostEditor({ post }: { post: Post | undefined }) {
           </Field>
 
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <div role="tablist" aria-label="Editor" className="flex gap-1">
-                {(["write", "preview"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    role="tab"
-                    aria-selected={tab === value}
-                    onClick={() => setTab(value)}
-                    className={cn(
-                      "cursor-pointer rounded-md px-3 py-1 text-sm",
-                      tab === value ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
-                    )}
-                  >
-                    {value === "write" ? "Escribir" : "Vista previa"}
-                  </button>
-                ))}
+            <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <div role="tablist" aria-label="Editor" className="flex gap-1">
+                  {(["write", "preview"] as const).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === value}
+                      onClick={() => setTab(value)}
+                      className={cn(
+                        "cursor-pointer rounded-md px-3 py-1 text-sm",
+                        tab === value ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
+                      )}
+                    >
+                      {value === "write" ? "Escribir" : "Vista previa"}
+                    </button>
+                  ))}
+                </div>
+                <EditorStats markdown={content ?? ""} />
               </div>
-              <Button size="sm" variant="ghost" onClick={() => setInsertImage(true)}>
-                Insertar imagen
-              </Button>
+              <div className="flex items-center gap-3">
+                <DraftStatusLabel status={draft.status} savedAt={draft.savedAt} />
+                <Button size="sm" variant="ghost" onClick={() => setInsertImage(true)}>
+                  Insertar imagen
+                </Button>
+              </div>
             </div>
             {tab === "write" ? (
-              <>
-                <label htmlFor="content-md" className="sr-only">
-                  Contenido en Markdown
-                </label>
-                <Textarea
-                  id="content-md"
-                  {...register("content_md")}
-                  rows={24}
-                  className="font-mono text-[13px] leading-relaxed"
-                  placeholder="# Escribe en Markdown…"
-                />
-              </>
+              <Controller
+                name="content_md"
+                control={control}
+                render={({ field }) => (
+                  <MarkdownEditor
+                    id="content-md"
+                    ref={editorRef}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
             ) : (
               <Card className="min-h-96 p-6">
                 <MarkdownPreview source={content ?? ""} />
@@ -291,6 +344,7 @@ function PostEditor({ post }: { post: Post | undefined }) {
                   ))}
                 </Select>
               </Field>
+              <DevMetadataFields register={register} errors={errors} hasProject={Boolean(projectId)} />
               <fieldset>
                 <legend className="mb-1.5 text-sm font-medium">Etiquetas</legend>
                 {tags.data?.length ? (
@@ -361,11 +415,16 @@ function PostEditor({ post }: { post: Post | undefined }) {
         title="Insertar imagen"
         onClose={() => setInsertImage(false)}
         onSelect={(media) => {
-          setValue(
-            "content_md",
-            `${content ?? ""}\n\n![${media.alt_text ?? ""}](${media.url})\n`,
-            { shouldDirty: true },
-          );
+          if (editorRef.current) {
+            editorRef.current.insertMedia(media); // en la posición del cursor
+          } else {
+            // Desde la vista previa el editor no está montado: se añade al final.
+            setValue(
+              "content_md",
+              `${content ?? ""}\n\n${imageMarkdown(media.alt_text ?? "", media.url)}\n`,
+              { shouldDirty: true },
+            );
+          }
           setInsertImage(false);
           setTab("write");
         }}

@@ -139,7 +139,8 @@ async def public_detail(session: AsyncSession, slug: str) -> PublicProjectDetail
         await session.scalars(
             select(Post)
             .where(Post.project_id == project.id, Post.status == "published")
-            .order_by(Post.published_at.desc())
+            # Primero la serie en orden (series_order); el resto, del más reciente al más antiguo.
+            .order_by(Post.series_order.asc().nulls_last(), Post.published_at.desc())
         )
     ).all()
     summary = PublicProjectSummary.model_validate(project)

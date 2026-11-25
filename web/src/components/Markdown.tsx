@@ -1,12 +1,29 @@
 import "server-only";
+import "katex/dist/katex.min.css";
 
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
+import rehypeKatex from "rehype-katex";
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
 import { createHighlighter, type Highlighter } from "shiki";
 
 import { headingSlug, uniqueId } from "@/lib/format";
+
+import { MermaidDiagram } from "./MermaidDiagram";
+
+/**
+ * Saneado estricto + las clases que `remark-math` emite para las fórmulas. KaTeX se aplica DESPUÉS
+ * de sanear: su salida la genera la biblioteca (no el autor) y `trust` está desactivado.
+ */
+const sanitizeSchema = {
+  ...defaultSchema,
+  attributes: {
+    ...defaultSchema.attributes,
+    code: [["className", /^language-./, "math-inline", "math-display"]],
+  },
+};
 
 const LANGS = [
   "bash",
@@ -84,6 +101,7 @@ function buildComponents(): Components {
       const match = /language-([\w-]+)/.exec(className ?? "");
       const code = textOf(children).replace(/\n$/, "");
       if (!match && !code.includes("\n")) return <code>{children}</code>;
+      if (match?.[1] === "mermaid") return <MermaidDiagram chart={code} />;
       return <CodeBlock code={code} lang={match?.[1] ?? "text"} />;
     },
     a: ({ href, children }) => {
@@ -105,11 +123,18 @@ function buildComponents(): Components {
   };
 }
 
-/** Markdown → HTML saneado (rehype-sanitize) con resaltado de sintaxis (Shiki). */
+/** Markdown → HTML saneado (rehype-sanitize) con Shiki, fórmulas KaTeX y diagramas Mermaid. */
 export function Markdown({ source }: { source: string }) {
   return (
     <div className="prose prose-neutral max-w-none dark:prose-invert prose-headings:font-mono prose-headings:tracking-tight prose-a:text-accent prose-code:before:content-none prose-code:after:content-none prose-pre:bg-transparent prose-pre:p-0 prose-img:rounded-lg">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]} components={buildComponents()}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[
+          [rehypeSanitize, sanitizeSchema],
+          [rehypeKatex, { throwOnError: false, trust: false }],
+        ]}
+        components={buildComponents()}
+      >
         {source}
       </ReactMarkdown>
     </div>

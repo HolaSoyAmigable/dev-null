@@ -54,8 +54,8 @@ Sin autenticación. Caché corta. Rate limit por IP.
 ### Posts
 | Método | Ruta | Descripción |
 |---|---|---|
-| `GET` | `/public/posts` | Lista paginada. Filtros: `page`, `page_size`, `tag`, `category`, `project`, `q` |
-| `GET` | `/public/posts/{slug}` | Post completo por slug |
+| `GET` | `/public/posts` | Lista paginada. Filtros: `page`, `page_size`, `tag`, `category`, `project`, `featured`, `q` |
+| `GET` | `/public/posts/{slug}` | Post completo por slug (incluye `featured`, `github_repo` y `series_order`) |
 | `GET` | `/public/posts/{slug}/related` | Posts relacionados (mismas etiquetas / categoría) |
 
 ### Proyectos
@@ -113,7 +113,7 @@ Requieren `Authorization: Bearer <access_token>`. Solo el administrador.
 | `GET` | `/admin/posts` | Lista con todos los estados. Filtros: `status`, `q` |
 | `POST` | `/admin/posts` | Crear borrador |
 | `GET` | `/admin/posts/{id}` | Obtener post por ID |
-| `PATCH` | `/admin/posts/{id}` | Actualizar campos |
+| `PATCH` | `/admin/posts/{id}` | Actualizar campos. Metadatos de desarrollo: `github_repo` (`usuario/repositorio` o URL de GitHub; se normaliza), `series_order` (entero 1–9999, requiere `project_id`; error `SERIES_REQUIRES_PROJECT`) y `featured` |
 | `DELETE` | `/admin/posts/{id}` | Eliminar (solo borradores/archivados) |
 | `POST` | `/admin/posts/{id}/publish` | Publicar → actualiza BD + dispara revalidación |
 | `POST` | `/admin/posts/{id}/unpublish` | Volver a borrador |

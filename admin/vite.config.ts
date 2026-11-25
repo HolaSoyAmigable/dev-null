@@ -39,6 +39,9 @@ export default defineConfig(({ mode }) => {
     base: "/admin/",
     plugins: [redirectBase(), react(), tailwindcss()],
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+    // Mermaid se importa de forma diferida: sin esto, Vite lo optimiza al primer uso y recarga la
+    // página entera en desarrollo (se perdería el contenido del editor sin guardar).
+    optimizeDeps: { include: ["mermaid"] },
     server: {
       port: 5173,
       proxy,

@@ -56,6 +56,7 @@ async def public_list(
     tag: str | None,
     category: str | None,
     project: str | None,
+    featured: bool | None,
     offset: int,
     limit: int,
 ) -> tuple[Sequence[Post], int]:
@@ -66,6 +67,8 @@ async def public_list(
         stmt = stmt.where(Post.category.has(Category.slug == category))
     if project:
         stmt = stmt.where(Post.project.has(Project.slug == project))
+    if featured is not None:
+        stmt = stmt.where(Post.featured.is_(featured))
     total = await _count(session, stmt)
     rows = await session.scalars(
         stmt.order_by(Post.published_at.desc(), Post.id.desc()).offset(offset).limit(limit)
