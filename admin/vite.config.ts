@@ -22,11 +22,18 @@ function redirectBase(): Plugin {
   };
 }
 
-// El panel se sirve bajo /admin/ (Caddy en producción). En desarrollo, Vite hace
-// de proxy hacia la API para trabajar en el mismo origen (cookies httpOnly sin CORS).
+// El panel se sirve bajo /admin/ (Caddy en producción). En desarrollo, Vite hace de proxy
+// para trabajar en el mismo origen (cookies httpOnly sin CORS), como Caddy en producción:
+//   /api   → API de administración (ADMIN_API_URL)
+//   /media → API pública, que sirve los archivos (API_URL)
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const apiTarget = env.API_PROXY_TARGET ?? "http://127.0.0.1:8000";
+  const adminApi = env.ADMIN_API_URL ?? "http://127.0.0.1:8001";
+  const publicApi = env.API_URL ?? "http://127.0.0.1:8000";
+  const proxy = {
+    "/api": { target: adminApi, changeOrigin: false },
+    "/media": { target: publicApi, changeOrigin: false },
+  };
 
   return {
     base: "/admin/",
@@ -34,17 +41,11 @@ export default defineConfig(({ mode }) => {
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
     server: {
       port: 5173,
-      proxy: {
-        "/api": { target: apiTarget, changeOrigin: false },
-        "/media": { target: apiTarget, changeOrigin: false },
-      },
+      proxy,
     },
     preview: {
       port: 4173,
-      proxy: {
-        "/api": { target: apiTarget, changeOrigin: false },
-        "/media": { target: apiTarget, changeOrigin: false },
-      },
+      proxy,
     },
     test: {
       environment: "jsdom",

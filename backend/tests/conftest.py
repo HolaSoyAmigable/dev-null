@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncBaseTransport, AsyncClient, Request, Response
 from sqlalchemy.engine import make_url
 
 _TEST_DEFAULTS = {
@@ -130,23 +130,63 @@ def revalidations(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, list[str]]
     return calls
 
 
+# Prefijos que el proxy inverso (Caddy) envía a la API pública; el resto va a la de administración.
+PUBLIC_PREFIXES = ("/api/v1/public", "/media")
+CLIENT_ADDRESS = ("203.0.113.10", 50000)
+
+
+class SplitTransport(AsyncBaseTransport):
+    """Route each request to the public or admin app, like the reverse proxy does in production."""
+
+    def __init__(self, public: FastAPI, admin: FastAPI) -> None:
+        self._public = ASGITransport(app=public, client=CLIENT_ADDRESS)
+        self._admin = ASGITransport(app=admin, client=CLIENT_ADDRESS)
+
+    async def handle_async_request(self, request: Request) -> Response:
+        target = self._public if request.url.path.startswith(PUBLIC_PREFIXES) else self._admin
+        return await target.handle_async_request(request)
+
+
 @pytest.fixture(scope="session")
-def app_instance() -> FastAPI:
-    from app.main import app
+def public_app() -> FastAPI:
+    from app.apps.public import app
+
+    return app
+
+
+@pytest.fixture(scope="session")
+def admin_app() -> FastAPI:
+    from app.apps.admin import app
 
     return app
 
 
 @pytest.fixture
 async def client(
-    app_instance: FastAPI, revalidations: list[tuple[str, list[str]]]
+    public_app: FastAPI, admin_app: FastAPI, revalidations: list[tuple[str, list[str]]]
 ) -> AsyncIterator[AsyncClient]:
-    """HTTP client bound to the ASGI app."""
-    transport = ASGITransport(app=app_instance, client=("203.0.113.10", 50000))
+    """HTTP client that reaches both APIs, routed by path prefix."""
+    transport = SplitTransport(public_app, admin_app)
     async with AsyncClient(
         transport=transport, base_url="http://test", timeout=10.0
     ) as http_client:
         yield http_client
+
+
+@pytest.fixture
+async def public_client(public_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """HTTP client bound only to the public API."""
+    transport = ASGITransport(app=public_app, client=CLIENT_ADDRESS)
+    async with AsyncClient(transport=transport, base_url="http://test", timeout=10.0) as http:
+        yield http
+
+
+@pytest.fixture
+async def admin_client(admin_app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """HTTP client bound only to the administration API."""
+    transport = ASGITransport(app=admin_app, client=CLIENT_ADDRESS)
+    async with AsyncClient(transport=transport, base_url="http://test", timeout=10.0) as http:
+        yield http
 
 
 from tests.helpers import ADMIN_EMAIL, ADMIN_PASSWORD  # noqa: E402

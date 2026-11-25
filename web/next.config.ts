@@ -21,11 +21,13 @@ const csp = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  // En desarrollo (y si Next se ejecuta sin Caddy delante) la API y la media se sirven
+  // En desarrollo (y si Next se ejecuta sin Caddy delante) la API pública y la media se sirven
   // en el mismo origen mediante rewrites: el beacon de métricas no necesita CORS.
+  // El blog solo habla con la API pública; la de administración no se expone aquí.
   async rewrites() {
     return [
-      { source: "/api/v1/:path*", destination: `${apiUrl}/api/v1/:path*` },
+      { source: "/api/v1/public/:path*", destination: `${apiUrl}/api/v1/public/:path*` },
+      { source: "/api/v1/health", destination: `${apiUrl}/api/v1/health` },
       { source: "/media/:path*", destination: `${apiUrl}/media/:path*` },
     ];
   },

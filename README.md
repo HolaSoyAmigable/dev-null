@@ -15,7 +15,7 @@ con Next.js, todo con métricas de visitas propias sin cookies ni banners.
 
 | Carpeta | Contenido |
 |---|---|
-| `backend/` | API FastAPI (Python 3.12, SQLAlchemy async, Alembic) + worker APScheduler |
+| `backend/` | Dos APIs FastAPI —pública y de administración— (Python 3.12, SQLAlchemy async, Alembic) + worker APScheduler |
 | `admin/` | Panel React + Vite (`/admin`) |
 | `web/` | Blog público Next.js (App Router, ISR) |
 | `e2e/` | Tests end-to-end con Playwright |
@@ -40,7 +40,8 @@ cd backend
 uv sync
 uv run alembic upgrade head
 uv run python -m app.cli create-admin --email tu@correo.com   # pide la contraseña
-uv run uvicorn app.main:app --port 8000                       # API  → http://localhost:8000/api/v1/docs
+uv run uvicorn app.apps.public:app --port 8000                # API pública → http://localhost:8000/api/v1/docs
+uv run uvicorn app.apps.admin:app --port 8001                 # API admin   → http://localhost:8001/api/v1/docs (otra terminal)
 uv run python -m app.worker                                   # worker (otra terminal)
 
 cd ..

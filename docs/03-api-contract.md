@@ -2,6 +2,11 @@
 
 ## Principios generales
 
+- **Dos APIs:** el contrato se reparte entre la **API pública** (`/api/v1/public/*`, `/api/v1/health`;
+  `backend/openapi.public.json`) y la **API de administración** (`/api/v1/auth/*`, `/api/v1/admin/*`,
+  `/api/v1/health`; `backend/openapi.admin.json`). En producción ambas cuelgan del mismo dominio y
+  Caddy enruta por prefijo (ver [01-architecture.md](01-architecture.md)). Las secciones de este
+  documento indican a cuál pertenece cada endpoint.
 - **Prefijo:** `/api/v1`
 - **Formato:** JSON exclusivamente.
 - **Fechas:** ISO 8601 UTC (ej. `"2024-01-15T10:30:00Z"`).
@@ -42,7 +47,7 @@
 
 ---
 
-## Endpoints públicos
+## Endpoints públicos (API pública, `:8000`)
 
 Sin autenticación. Caché corta. Rate limit por IP.
 
@@ -82,7 +87,7 @@ Sin autenticación. Caché corta. Rate limit por IP.
 
 ---
 
-## Endpoints de autenticación
+## Endpoints de autenticación (API de administración, `:8001`)
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -98,7 +103,7 @@ Sin autenticación. Caché corta. Rate limit por IP.
 
 ---
 
-## Endpoints de administración
+## Endpoints de administración (API de administración, `:8001`)
 
 Requieren `Authorization: Bearer <access_token>`. Solo el administrador.
 

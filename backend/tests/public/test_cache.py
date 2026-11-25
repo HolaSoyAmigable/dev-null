@@ -31,7 +31,27 @@ async def test_unknown_route_uses_error_envelope(client: AsyncClient) -> None:
     }
 
 
-async def test_openapi_is_published(client: AsyncClient) -> None:
-    schema = (await client.get(f"{API}/openapi.json")).json()
-    assert "/api/v1/public/posts" in schema["paths"]
-    assert "EventIn" in schema["components"]["schemas"]
+async def test_each_api_publishes_only_its_own_contract(
+    public_client: AsyncClient, admin_client: AsyncClient
+) -> None:
+    public = (await public_client.get(f"{API}/openapi.json")).json()
+    admin = (await admin_client.get(f"{API}/openapi.json")).json()
+
+    assert "/api/v1/public/posts" in public["paths"]
+    assert {"EventIn", "ErrorResponse"} <= set(public["components"]["schemas"])
+    assert not [path for path in public["paths"] if "/admin" in path or "/auth" in path]
+
+    assert "/api/v1/auth/login" in admin["paths"]
+    assert "/api/v1/admin/posts" in admin["paths"]
+    assert "ErrorResponse" in admin["components"]["schemas"]
+    assert not [path for path in admin["paths"] if "/public" in path]
+
+
+async def test_apis_do_not_serve_each_others_routes(
+    public_client: AsyncClient, admin_client: AsyncClient
+) -> None:
+    assert (await public_client.post(f"{API}/auth/login", json={})).status_code == 404
+    assert (await public_client.get(f"{API}/admin/posts")).status_code == 404
+    assert (await admin_client.get(f"{API}/public/posts")).status_code == 404
+    assert (await public_client.get(f"{API}/health")).status_code == 200
+    assert (await admin_client.get(f"{API}/health")).status_code == 200

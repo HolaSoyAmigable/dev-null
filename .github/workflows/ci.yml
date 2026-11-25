@@ -88,7 +88,7 @@ jobs:
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: bash scripts/generate-types.sh
       - name: Los tipos generados deben estar versionados y al día
-        run: git diff --exit-code -- backend/openapi.json admin/src/api/schema.d.ts web/src/lib/api/schema.d.ts
+        run: git diff --exit-code -- backend/openapi.admin.json backend/openapi.public.json admin/src/api/schema.d.ts web/src/lib/api/schema.d.ts
 
   e2e:
     name: E2E (Playwright)

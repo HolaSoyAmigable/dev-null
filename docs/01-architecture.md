@@ -14,11 +14,15 @@
               │   ISR + revalidación  │  │  base path: /admin/     │
               └────────────────────┬──┘  └─────────────────────────┘
                                    │
-                        ┌──────────▼──────────────┐
-                        │   api (FastAPI :8000)    │
-                        │   prefijo: /api/v1       │
-                        └──────┬──────────┬────────┘
-                               │          │
+             ┌─────────────────▼───┐   ┌────────────────────┐
+             │ api pública :8000   │   │ api admin :8001    │
+             │ /api/v1/public/*    │   │ /api/v1/auth/*     │
+             │ (solo lectura +     │   │ /api/v1/admin/*    │
+             │  beacon métricas)   │   │ (login y CMS)      │
+             └──────┬──────────────┘   └──────┬─────────────┘
+                    │  (Caddy enruta por ruta; ambas ◄──┘ comparten
+                    │   usan el mismo código base)       BD y Redis
+                    │                                     │
                     ┌──────────▼──┐  ┌────▼──────┐
                     │ PostgreSQL  │  │   Redis   │
                     │     16      │  │  caché +  │
@@ -36,10 +40,28 @@
 |---|---|
 | `/` | web — Next.js `:3000` |
 | `/admin/*` | admin — build estático (base path `/admin/`) |
-| `/api/v1/*` | api — FastAPI `:8000` |
+| `/api/v1/public/*`, `/api/v1/health`, `/media/*` | api pública — FastAPI `:8000` |
+| `/api/v1/auth/*`, `/api/v1/admin/*` | api de administración — FastAPI `:8001` |
 
-**Sin CORS en producción.** Todo el tráfico pasa por Caddy en el mismo origen.
-`COOKIE_SECURE` es configurable por entorno.
+**Sin CORS en producción.** Todo el tráfico pasa por Caddy en el mismo origen, así la cookie
+`httpOnly` del refresh token (`/api/v1/auth`) funciona. `COOKIE_SECURE` es configurable por entorno.
+
+### Dos APIs, un código
+El backend se ejecuta como **dos aplicaciones FastAPI independientes** (dos procesos) que comparten
+`core/`, `modules/`, la base de datos y Redis:
+
+| API | Módulo ASGI | Contenido | Contrato |
+|---|---|---|---|
+| Pública | `app.apps.public:app` | Lectura del blog, búsqueda y beacon de métricas. Sin autenticación ni escritura. | `backend/openapi.public.json` → tipos de `web/` |
+| Administración | `app.apps.admin:app` | Login/refresh/logout y todo el CMS (`/admin/*`). | `backend/openapi.admin.json` → tipos de `admin/` |
+
+- **Separación de riesgos:** un fallo, un pico de tráfico o un abuso en la API pública no tumba el
+  panel, y la API pública no expone ningún endpoint de login ni de escritura.
+- **Acceso del administrador:** la API de administración **no se restringe por red**: debe poder usarse
+  desde cualquier lugar. La protección es la autenticación (Argon2id, access token de 15 min, refresh
+  `httpOnly` rotativo, rate limit de login, `COOKIE_SECURE`) y HTTPS en Caddy.
+- **Estructura:** `app/apps/factory.py` crea ambas apps (errores, lifespan, docs, OpenAPI);
+  `app/apps/public.py` y `app/apps/admin.py` solo eligen sus routers.
 
 ---
 
@@ -47,7 +69,8 @@
 
 | Servicio | Descripción |
 |---|---|
-| `api` | FastAPI (Python 3.12) |
+| `api` | FastAPI pública (Python 3.12); aplica las migraciones al arrancar |
+| `admin-api` | FastAPI de administración (misma imagen que `api`, otro comando) |
 | `worker` | APScheduler — tareas programadas y métricas |
 | `db` | PostgreSQL 16 |
 | `redis` | Redis — caché y rate limiting |
@@ -118,6 +141,7 @@ Navegador (cliente web)
 devnull/
 ├── backend/
 │   ├── app/
+│   │   ├── apps/          # factory.py, public.py, admin.py (las dos APIs)
 │   │   ├── core/          # config, db, redis, seguridad transversal
 │   │   ├── modules/       # módulos de negocio (ver regla de capas)
 │   │   │   ├── auth/
@@ -163,7 +187,8 @@ repository.py
 ## Contrato entre aplicaciones
 
 - El **OpenAPI de FastAPI** es la única fuente de verdad del contrato.
-- Los tipos TypeScript de `admin/` y `web/` se generan con `scripts/generate-types.sh`.
+- Cada API publica su contrato (`openapi.admin.json`, `openapi.public.json`). Los tipos TypeScript de
+  `admin/` (API de administración) y `web/` (API pública) se generan con `scripts/generate-types.sh`.
 - Nunca escribir tipos TS a mano para los schemas de la API.
 
 ---
@@ -171,7 +196,8 @@ repository.py
 ## Resiliencia
 
 - Todos los servicios: `restart: unless-stopped`.
-- La API ejecuta migraciones Alembic automáticamente al arrancar.
+- La API pública ejecuta las migraciones Alembic al arrancar; `admin-api` y `worker` esperan a que
+  esté sana (`healthcheck`) antes de iniciar.
 - `GET /ready` verifica la conexión a PostgreSQL y Redis antes de responder `200`.
 
 ---
@@ -184,9 +210,10 @@ repository.py
 - **Rutas revalidadas:** el post, `/`, `/blog` (y su paginación `/blog/page/[n]`),
   `/blog/tag/{tag}`, `/blog/category/{cat}`, `/projects` y `/projects/{slug}` si aplica,
   `/rss.xml` y `/sitemap.xml`. Los cambios de settings envían `"*"`, que revalida todo el sitio.
-- **Desarrollo sin Caddy:** Vite (admin) y Next.js (web) hacen de proxy de `/api/v1` y `/media`
-  hacia la API, así todo funciona en el mismo origen también en local.
-- **Media en desarrollo:** la API sirve `/media` con `StaticFiles` solo si `ENV != production`;
+- **Desarrollo sin Caddy:** Vite (admin) hace de proxy de `/api` hacia la API de administración
+  (`ADMIN_API_URL`, `:8001`) y de `/media` hacia la pública; Next.js (web) hace de proxy de
+  `/api/v1/public` y `/media` hacia la pública (`API_URL`, `:8000`). Todo en el mismo origen, como Caddy.
+- **Media en desarrollo:** la API pública sirve `/media` con `StaticFiles` solo si `ENV != production`;
   en producción la servirá Caddy desde el volumen.
 - **Worker:** proceso aparte (`python -m app.worker`; servicio `worker` en Compose con
   `--profile app`). Publica lo programado cada minuto y agrega métricas cada noche.

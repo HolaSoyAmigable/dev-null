@@ -8,7 +8,7 @@ from pydantic import ValidationError as PydanticValidationError
 
 from app.core.cache import cache_key, cached_json
 from app.core.deps import PageDep, RedisDep, SessionDep
-from app.core.errors import ErrorResponse, ValidationError
+from app.core.errors import ValidationError
 from app.core.pagination import Page
 from app.core.ratelimit import client_ip, events_rate_limit, public_rate_limit
 from app.core.slug import SLUG_PATTERN
@@ -202,6 +202,3 @@ async def ingest_event(request: Request, session: SessionDep) -> EventAccepted:
 
 
 router.include_router(content)
-
-# Modelos que no se declaran como parámetros pero deben aparecer en el OpenAPI.
-OPENAPI_EXTRA_MODELS = (EventIn, ErrorResponse)

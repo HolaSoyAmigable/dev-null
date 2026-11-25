@@ -29,7 +29,9 @@ RUN useradd --create-home --uid 10001 appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 8000
+# 8000: API pública · 8001: API de administración (mismo código, distinto comando).
+EXPOSE 8000 8001
 
-# Aplica migraciones al arrancar y después levanta la API.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers"]
+# Por defecto levanta la API pública y aplica las migraciones al arrancar. La API de administración
+# usa la misma imagen con otro comando (ver infra/docker-compose.yml) y espera a que esta esté sana.
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.apps.public:app --host 0.0.0.0 --port 8000 --proxy-headers"]

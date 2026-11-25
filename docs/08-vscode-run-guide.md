@@ -2,7 +2,7 @@
 
 Guía paso a paso, comando por comando. Todos los comandos son de **PowerShell** (terminal integrada de VS Code, `Ctrl+Ñ` o `` Ctrl+` ``) salvo que se indique lo contrario.
 
-> Resumen: necesitas **4 terminales** abiertas a la vez: API, worker, panel admin y blog público. PostgreSQL y Redis corren en Docker.
+> Resumen: necesitas **5 terminales** abiertas a la vez: API pública, API de administración, worker, panel admin y blog público. PostgreSQL y Redis corren en Docker.
 
 ---
 
@@ -130,22 +130,36 @@ Pide la contraseña de forma interactiva (mínimo según `MIN_PASSWORD_LENGTH`):
 uv run python -m app.cli create-admin --email tu@correo.com
 ```
 
-### 5.4 Arrancar la API (terminal 1)
+El backend son **dos APIs independientes** con el mismo código: la **pública** (blog y métricas, puerto 8000) y la de **administración** (login y CMS del panel, puerto 8001).
+
+### 5.4 Arrancar la API pública (terminal 1)
 
 ```powershell
-uv run uvicorn app.main:app --port 8000 --reload
+uv run uvicorn app.apps.public:app --port 8000 --reload
+```
+
+### 5.5 Arrancar la API de administración (terminal 2)
+
+Desde `backend`, en otra terminal:
+
+```powershell
+uv run uvicorn app.apps.admin:app --port 8001 --reload
 ```
 
 Comprobar en el navegador o con curl:
 
-- Documentación interactiva: <http://localhost:8000/api/v1/docs> (solo si `ENV` ≠ `production`)
-- Salud: <http://localhost:8000/api/v1/health>
+- Documentación pública: <http://localhost:8000/api/v1/docs> · de administración: <http://localhost:8001/api/v1/docs> (solo si `ENV` ≠ `production`)
+- Salud de ambas:
 
 ```powershell
 curl.exe http://localhost:8000/api/v1/health
 ```
 
-### 5.5 Arrancar el worker (terminal 2)
+```powershell
+curl.exe http://localhost:8001/api/v1/health
+```
+
+### 5.6 Arrancar el worker (terminal 3)
 
 Publica posts programados y agrega/purga métricas. Desde `backend`:
 
@@ -165,21 +179,21 @@ Abre una **terminal nueva** en la raíz del proyecto.
 corepack pnpm install
 ```
 
-### 6.2 Panel de administración (terminal 3)
+### 6.2 Panel de administración (terminal 4)
 
 ```powershell
 corepack pnpm --filter admin dev
 ```
 
-Abre <http://localhost:5173/admin/> e inicia sesión con el admin del paso 5.3. Vite hace de proxy hacia la API (`/api` y `/media`), así que no hay CORS.
+Abre <http://localhost:5173/admin/> e inicia sesión con el admin del paso 5.3. Vite hace de proxy: `/api` hacia la API de administración (`:8001`) y `/media` hacia la pública (`:8000`), así que no hay CORS.
 
-### 6.3 Blog público (terminal 4)
+### 6.3 Blog público (terminal 5)
 
 ```powershell
 corepack pnpm --filter web dev
 ```
 
-Abre <http://localhost:3000>. Next.js reescribe `/api/v1` y `/media` hacia la API (`API_URL`).
+Abre <http://localhost:3000>. Next.js reescribe `/api/v1/public` y `/media` hacia la API pública (`API_URL`).
 
 ---
 
@@ -287,7 +301,8 @@ Para **borrar también los datos** (irreversible): añade `-v` al comando anteri
 | `docker: error during connect` | Docker Desktop apagado | Abre Docker Desktop y espera a que arranque |
 | `ConnectionRefusedError` / `WinError 1225` en tests o API | db/redis no están levantados | Repite el paso 4 |
 | `password authentication failed` | Contraseña de `DATABASE_URL` ≠ `POSTGRES_PASSWORD` | Alinea ambas; si el volumen ya existía, `down -v` y vuelve a subir |
-| `port is already allocated` | Puerto 5432/6379/8000 ocupado | Cambia `DB_PORT`, `REDIS_PORT` o `API_PORT` en `.env` y en las URLs |
+| `port is already allocated` | Puerto 5432/6379/8000/8001 ocupado | Cambia `DB_PORT`, `REDIS_PORT`, `API_PORT` o `ADMIN_API_PORT` en `.env` y en las URLs |
+| El panel no inicia sesión (`502`/error de red) | Falta la API de administración | Arráncala en el puerto 8001 (paso 5.5) |
 | La API no arranca: "Configuración insegura en producción" | `ENV=production` con secretos débiles | Usa secretos largos y distintos, `COOKIE_SECURE=true` |
 | `ValidationError` al iniciar: faltan campos | `.env` incompleto | Compara con `.env.example` |
 | Panel muestra "sesión inválida" tras reiniciar Redis | Los refresh tokens viven en Redis | Vuelve a iniciar sesión |

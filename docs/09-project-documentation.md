@@ -40,19 +40,24 @@ Blog personal con tres pilares: **carrera**, **proyectos** y **publicaciones**. 
 ## 3. Arquitectura
 
 ```
-Navegador ──► Caddy (producción)
-               ├─ /admin/*  → panel React (estático)
-               ├─ /api/*    → API FastAPI
-               ├─ /media/*  → volumen de archivos subidos
-               └─ /*        → Next.js (blog público)
+Navegador ──► Caddy (producción, mismo dominio y HTTPS)
+               ├─ /admin/*                         → panel React (estático)
+               ├─ /api/v1/public/*, /health, /media → API pública        (:8000)
+               ├─ /api/v1/auth/*, /api/v1/admin/*   → API de administración (:8001)
+               └─ /*                                → Next.js (blog público)
 
-API FastAPI ──► PostgreSQL (datos)
-            ──► Redis (caché pública, rate limit, refresh tokens)
-            ──► Next.js /api/revalidate (webhook ISR)
-Worker (APScheduler) ──► PostgreSQL / Redis / webhook
+API pública        ──┐
+API de administración ┼─► PostgreSQL (datos) · Redis (caché, rate limit, refresh tokens)
+Worker (APScheduler) ─┘
+API de administración / worker ──► Next.js /api/revalidate (webhook ISR)
 ```
 
-En desarrollo no hay Caddy: Vite (admin) y Next.js (web) hacen proxy/rewrite de `/api` y `/media` hacia la API, de modo que todo es de mismo origen y las cookies `httpOnly` funcionan sin CORS.
+El backend son **dos APIs independientes con el mismo código** (`app.apps.public:app` y `app.apps.admin:app`):
+
+- **Pública:** lectura del blog, búsqueda y beacon de métricas. Sin login ni escritura. La usan los visitantes.
+- **Administración:** login y todo el CMS. **Accesible desde cualquier red** para que puedas administrar el blog desde donde estés; se protege con autenticación (no con restricción de red) y HTTPS.
+
+En desarrollo no hay Caddy: Vite (admin) hace proxy de `/api` hacia la API de administración (`:8001`) y Next.js (web) de `/api/v1/public` hacia la pública (`:8000`), de modo que todo es de mismo origen y las cookies `httpOnly` funcionan sin CORS.
 
 ### 3.1 Regla de capas (backend)
 
@@ -66,6 +71,7 @@ Los routers **nunca** tocan la base de datos directamente.
 
 ```
 backend/app/
+  apps/        factory.py, public.py y admin.py: las dos APIs ASGI
   core/        config, db, redis, seguridad, errores, caché, paginación, rate limit, slugs
   modules/     auth, career, health, media, metrics, posts, projects, public,
                revalidation, settings, taxonomy
@@ -125,13 +131,13 @@ Migraciones: `backend/alembic/versions/` (`0001` esquema inicial, `0002` trigger
 
 ## 5. API REST
 
-Prefijo `/api/v1`. Documentación interactiva en `/api/v1/docs` (desactivada en producción). Todos los errores usan el sobre:
+Prefijo `/api/v1`. Cada API tiene su documentación interactiva en `/api/v1/docs` (pública `:8000`, administración `:8001`; desactivada en producción). Todos los errores usan el sobre:
 
 ```json
 { "error": { "code": "NOT_FOUND", "message": "…", "details": {} } }
 ```
 
-### 5.1 Públicas (sin autenticación, con caché Redis y rate limit por IP)
+### 5.1 API pública (sin autenticación, con caché Redis y rate limit por IP)
 
 | Método y ruta | Descripción |
 |---|---|
@@ -145,7 +151,7 @@ Prefijo `/api/v1`. Documentación interactiva en `/api/v1/docs` (desactivada en 
 | `GET /public/settings` · `/slugs` | Ajustes del sitio y slugs para sitemap |
 | `POST /public/events` | Beacon de métricas (máx. 8 KB, rate limit propio) |
 
-### 5.2 Autenticación
+### 5.2 API de administración — autenticación
 
 | Ruta | Descripción |
 |---|---|
@@ -155,7 +161,7 @@ Prefijo `/api/v1`. Documentación interactiva en `/api/v1/docs` (desactivada en 
 | `GET /auth/me` | Usuario actual |
 | `POST /auth/change-password` | Cambia la contraseña y cierra las demás sesiones |
 
-### 5.3 Administración (requiere rol `admin`)
+### 5.3 API de administración — CMS (requiere rol `admin`)
 
 - `/admin/posts`: CRUD, `publish`, `unpublish`, `archive`, `schedule`, `duplicate`, `revisions`, `restore-revision/{id}`.
 - `/admin/projects`, `/admin/career` (incluye `PATCH /reorder`), `/admin/tags`, `/admin/categories`.
@@ -165,7 +171,7 @@ Prefijo `/api/v1`. Documentación interactiva en `/api/v1/docs` (desactivada en 
 
 ### 5.4 Contrato de tipos
 
-El OpenAPI de FastAPI (`backend/openapi.json`) es la fuente de verdad. `scripts/generate-types.sh` genera `admin/src/api/schema.d.ts` y `web/src/lib/api/schema.d.ts`. El CI falla si no están al día. **Nunca se escriben tipos de la API a mano.**
+Cada API publica su OpenAPI, que es la fuente de verdad de su contrato: `backend/openapi.admin.json` y `backend/openapi.public.json`. `scripts/generate-types.sh` genera `admin/src/api/schema.d.ts` (desde la de administración) y `web/src/lib/api/schema.d.ts` (desde la pública). El CI falla si no están al día. **Nunca se escriben tipos de la API a mano.**
 
 ---
 
@@ -211,6 +217,8 @@ El OpenAPI de FastAPI (`backend/openapi.json`) es la fuente de verdad. `scripts/
 | Variable | Descripción |
 |---|---|
 | `ENV` | `development`, `production` o `test` |
+| `API_PORT` (8000), `ADMIN_API_PORT` (8001) | Puertos de la API pública y la de administración |
+| `API_URL`, `ADMIN_API_URL` | URLs que usan Next.js y Vite para el proxy en desarrollo |
 | `SITE_NAME`, `SITE_URL` | Nombre visible y URL pública del blog |
 | `DATABASE_URL`, `REDIS_URL` | Conexiones (en contenedor apuntan a `db` y `redis`) |
 | `JWT_SECRET`, `REFRESH_SECRET`, `METRICS_SALT_SECRET`, `REVALIDATE_SECRET` | Secretos sin valor por defecto |
@@ -287,7 +295,7 @@ Notas sin cambio: los días son UTC (en México, desde las 18:00 locales las vis
 
 - **Backend:** `ruff check`, `ruff format --check`, `mypy app` y `pytest --cov-fail-under=80`. Los tests usan una base `_test` y Redis DB 15.
 - **Frontend:** ESLint, `tsc`, Vitest (admin y web), *build* de ambos.
-- **Contrato:** regenera tipos y falla si `git diff` no está limpio.
+- **Contrato:** regenera los dos OpenAPI y los tipos y falla si `git diff` no está limpio.
 - **E2E:** Playwright con los flujos críticos (`e2e/tests/critical-flows.spec.ts`).
 - **CI** (`.github/workflows/ci.yml`): jobs `backend`, `frontend`, `contract` y `e2e` en cada PR y en `main`.
 
@@ -295,7 +303,7 @@ Notas sin cambio: los días son UTC (en México, desde las 18:00 locales las vis
 
 ## 12. Operación
 
-- **Servicios Docker Compose** (`infra/docker-compose.yml`): `db`, `redis` por defecto; `api` y `worker` con `--profile app`.
+- **Servicios Docker Compose** (`infra/docker-compose.yml`): `db`, `redis` por defecto; `api` (pública), `admin-api` y `worker` con `--profile app`. `admin-api` y `worker` esperan a que `api` esté sana.
 - **Backup:** `infra/backup/backup.sh` (`pg_dump` formato custom + tar del volumen de media + `SHA256SUMS`, conserva las últimas 14). Restauración con `restore.sh`.
 - **Despliegue:** Docker, Caddy y AWS están **fuera de alcance hasta la fase 8** del roadmap.
 

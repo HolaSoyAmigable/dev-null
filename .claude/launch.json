@@ -4,19 +4,55 @@
     {
       "name": "api",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "--directory", "backend", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"],
+      "runtimeArgs": [
+        "run",
+        "--directory",
+        "backend",
+        "uvicorn",
+        "app.apps.public:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8000"
+      ],
       "port": 8000
+    },
+    {
+      "name": "admin-api",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": [
+        "run",
+        "--directory",
+        "backend",
+        "uvicorn",
+        "app.apps.admin:app",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8001"
+      ],
+      "port": 8001
     },
     {
       "name": "admin",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "--filter", "admin", "dev"],
+      "runtimeArgs": [
+        "pnpm",
+        "--filter",
+        "admin",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "web",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["pnpm", "--filter", "web", "dev"],
+      "runtimeArgs": [
+        "pnpm",
+        "--filter",
+        "web",
+        "dev"
+      ],
       "port": 3000
     }
   ]

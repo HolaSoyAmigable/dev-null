@@ -63,18 +63,16 @@ async def test_ready_returns_ready_with_real_dependencies(client: AsyncClient) -
     assert response.json() == READY_HEALTHY
 
 
-async def test_ready_returns_503_when_redis_fails(
-    client: AsyncClient, app_instance: FastAPI
-) -> None:
+async def test_ready_returns_503_when_redis_fails(client: AsyncClient, admin_app: FastAPI) -> None:
     from app.core.db import get_session
     from app.core.redis import get_redis
 
-    app_instance.dependency_overrides[get_session] = _provide_healthy_session
-    app_instance.dependency_overrides[get_redis] = _provide_failing_redis
+    admin_app.dependency_overrides[get_session] = _provide_healthy_session
+    admin_app.dependency_overrides[get_redis] = _provide_failing_redis
     try:
         response = await client.get("/api/v1/ready")
     finally:
-        app_instance.dependency_overrides.clear()
+        admin_app.dependency_overrides.clear()
 
     assert response.status_code == 503
     assert response.json() == {
@@ -84,17 +82,17 @@ async def test_ready_returns_503_when_redis_fails(
 
 
 async def test_ready_returns_503_when_database_fails(
-    client: AsyncClient, app_instance: FastAPI
+    client: AsyncClient, admin_app: FastAPI
 ) -> None:
     from app.core.db import get_session
     from app.core.redis import get_redis
 
-    app_instance.dependency_overrides[get_session] = _provide_failing_session
-    app_instance.dependency_overrides[get_redis] = _provide_healthy_redis
+    admin_app.dependency_overrides[get_session] = _provide_failing_session
+    admin_app.dependency_overrides[get_redis] = _provide_healthy_redis
     try:
         response = await client.get("/api/v1/ready")
     finally:
-        app_instance.dependency_overrides.clear()
+        admin_app.dependency_overrides.clear()
 
     assert response.status_code == 503
     assert response.json() == {

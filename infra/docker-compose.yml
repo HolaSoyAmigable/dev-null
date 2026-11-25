@@ -44,7 +44,8 @@ services:
       retries: 5
       start_period: 5s
 
-  # ── API (FastAPI) — solo arranca con --profile app ────────────────────────
+  # ── API pública (FastAPI) — solo arranca con --profile app ────────────────
+  # Contenido del blog y métricas. Aplica las migraciones al arrancar.
   api:
     build:
       context: ../backend
@@ -67,6 +68,39 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    profiles:
+      - app
+
+  # ── API de administración (FastAPI) — misma imagen, otro comando ───────────
+  # Login y CMS del panel. Accesible desde cualquier red a través del proxy inverso;
+  # la protección es la autenticación. Espera a que la API pública haya migrado la BD.
+  admin-api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_DIR: /app/media
+    volumes:
+      - media_data:/app/media
+    ports:
+      - "127.0.0.1:${ADMIN_API_PORT:-8001}:8001"
+    networks:
+      - net
+    depends_on:
+      api:
+        condition: service_healthy
+    command: ["uvicorn", "app.apps.admin:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers"]
     profiles:
       - app
 
@@ -85,7 +119,7 @@ services:
       - net
     depends_on:
       api:
-        condition: service_started
+        condition: service_healthy
     profiles:
       - app
     command: ["python", "-m", "app.worker"]
