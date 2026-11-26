@@ -205,11 +205,27 @@ Cada API publica su OpenAPI, que es la fuente de verdad de su contrato: `backend
 
 #### Editor de posts
 
-El formulario (`features/posts/PostEditorPage.tsx`) delega en componentes pequeños de `features/posts/editor/`:
+El formulario (`features/posts/PostEditorPage.tsx`) ofrece cuatro vistas del mismo campo `content_md` (la elegida se recuerda en el navegador): **Editar** (editor visual, por defecto), **Markdown** (texto fuente), **Vista previa** y **Dividida** (Markdown + vista previa).
+
+**Editor visual (WYSIWYG, `features/posts/visual/`).** Se ve el resultado mientras se escribe: la negrita se ve en negrita, los títulos como títulos, sin símbolos de Markdown. Está hecho con **TipTap** (ProseMirror) y `tiptap-markdown`; el post se sigue guardando como Markdown, así que la API, el blog, las revisiones y la búsqueda no cambian.
 
 | Pieza | Función |
 |---|---|
-| `MarkdownEditor.tsx` + `SnippetToolbar.tsx` + `snippets.ts` | Textarea con barra de accesos rápidos (`ts`, `kt`, `py`, `sql`, `bash`, `mermaid`, `$$`). Inserta bloques en el cursor (o al final si aún no se ha colocado), envuelve la selección y separa con líneas en blanco. |
+| `VisualEditor.tsx` + `extensions.ts` | Carga el Markdown, lo edita y lo devuelve al formulario. Carga diferida (el paquete pesa ~1 MB, 340 KB comprimido). Admite negrita, cursiva, tachado, código, enlaces, H1–H4, listas (viñetas, numeradas, tareas), citas, tablas GFM, imágenes, bloques de código con resaltado y selector de lenguaje, `Ctrl+K` para enlaces y las reglas de Markdown al escribir (`## `, `- `, `1. `, `> `, ` ``` `). |
+| `VisualToolbar.tsx` + `LinkBar.tsx` | Barra con botones que reflejan el formato bajo el cursor (`aria-pressed`), deshacer/rehacer, bloques (`ts`, `kt`, `py`, `sql`, `bash`, `mermaid`, `$$`) y botones contextuales de tabla (añadir/eliminar fila, columna o tabla). Los diagramas y las fórmulas en bloque se insertan fuera de la lista o cita donde esté el cursor. |
+| `markdownMath.ts` + `math.ts` + `MathViews.tsx` | Fórmulas `$…$` y `$$…$$`: reglas de markdown-it que las leen y nodos que las escriben sin escapar el LaTeX. Se ven dibujadas (KaTeX) y se editan al hacer clic. El importe `$5 y $10` no se confunde con una fórmula. |
+| `CodeBlockView.tsx` | Bloque de código con selector de lenguaje; con `mermaid`, el diagrama se dibuja en vivo bajo el código. |
+
+Sobre el texto fuente: abrir un post **no** lo reescribe; solo se reescribe cuando se cambia algo en el editor visual, y entonces se normaliza (por ejemplo `_cursiva_` pasa a `*cursiva*`, `__negrita__` a `**negrita**`). El contenido y el aspecto en el blog no cambian. La pestaña **Markdown** permite ver y retocar el texto fuente.
+
+Resto de piezas de `features/posts/editor/` (compartidas por el editor de texto):
+
+| Pieza | Función |
+|---|---|
+| `EditorToolbar.tsx` + `formatting.ts` + `snippets.ts` | Barra con **formato** (negrita, cursiva, tachado, código, enlace, H2/H3, listas de viñetas, numeradas y de tareas, cita, tabla, separador) y **bloques** (`ts`, `kt`, `py`, `sql`, `bash`, `mermaid`, `$$`). Las operaciones son funciones puras (`valor + selección → edición`): envuelven o desenvuelven la selección, alternan prefijos de línea y separan los bloques con líneas en blanco. |
+| `MarkdownEditor.tsx` + `textEdit.ts` | Atajos `Ctrl/⌘ + B`, `I`, `E`, `K`; `Tab`/`Shift+Tab` sangran (con `Esc` y luego `Tab` se sale del editor); `Enter` continúa listas, tareas y citas (y un elemento vacío las termina); pegar una URL sobre texto seleccionado crea el enlace; altura automática. Las ediciones se aplican con `execCommand`, así que **`Ctrl+Z` y `Ctrl+Y` deshacen y rehacen también lo hecho con la barra**; si el navegador no lo permite se aplica por la vía normal. |
+| `OutlineCard.tsx` + `lib/outline.ts` | **Índice** con los títulos (H1–H4, sin contar el código); al pulsar uno el cursor y la vista saltan a esa sección. |
+| `useEditorView.ts` + `PostEditorPage.tsx` | Vistas **Escribir**, **Vista previa** y **Dividida** (editor y vista previa lado a lado; la vista previa acompaña al scroll), que se recuerda en el navegador. **Modo enfoque**: oculta el panel lateral, el slug y el extracto. La cabecera con Guardar/Publicar y la barra de formato quedan fijas al hacer scroll. |
 | `MarkdownEditor.tsx` | **Arrastrar o pegar imágenes**: se suben a `/admin/media` (máx. 10 MB; PNG, JPEG, GIF, WebP, AVIF) y se inserta `![alt](url)` en el cursor, con un marcador mientras sube. |
 | `EditorStats.tsx` + `lib/markdownStats.ts` | "450 palabras • 3 min de lectura" en tiempo real; mismo cálculo que el backend (200 ppm, código a la mitad). |
 | `draft.ts` + `DraftNotice.tsx` | **Autoguardado local** cada 30 s en `localStorage` (`devnull:draft:post:<id>` o `…:new`), indicador "Borrador guardado localmente", y aviso para restaurar o descartar al reabrir. Se borra al guardar en el servidor. |

@@ -37,9 +37,17 @@ test.describe.serial("flujos críticos", () => {
 
     await page.getByLabel("Título", { exact: true }).fill(title);
     await page.getByLabel("Extracto").fill("Publicado automáticamente por Playwright.");
-    await page
-      .getByLabel("Contenido en Markdown")
-      .fill("## Sección E2E\n\nContenido de prueba con `código`.\n\n```python\nprint('hola')\n```");
+    // Editor visual: se escribe con el teclado y las reglas de Markdown dan formato en vivo.
+    const editor = page.getByRole("textbox", { name: "Contenido del post" });
+    await editor.click();
+    await page.keyboard.type("## Sección E2E");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Contenido de prueba con `código`.");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("```python ");
+    await page.keyboard.type("print('hola')");
+    await expect(editor.getByRole("heading", { name: "Sección E2E" })).toBeVisible();
+    await expect(editor.locator("pre code")).toContainText("print('hola')");
     await page.getByRole("button", { name: /^Guardar/ }).first().click();
 
     await expect(page).toHaveURL(/\/admin\/posts\/\d+$/);

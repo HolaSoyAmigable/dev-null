@@ -20,7 +20,7 @@ const FENCE = "```";
 const MERMAID_TEMPLATE = "flowchart TD\n  A[Inicio] --> B[Fin]";
 
 /** Separa el bloque del texto vecino con líneas en blanco, como exige Markdown. */
-function gaps(before: string, after: string): { lead: string; trail: string } {
+export function gaps(before: string, after: string): { lead: string; trail: string } {
   const lead = before === "" || before.endsWith("\n\n") ? "" : before.endsWith("\n") ? "\n" : "\n\n";
   const trail = after === "" ? "\n" : after.startsWith("\n\n") ? "" : after.startsWith("\n") ? "\n" : "\n\n";
   return { lead, trail };

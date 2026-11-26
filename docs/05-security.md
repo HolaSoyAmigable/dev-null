@@ -48,6 +48,7 @@ Implementado en Redis (contador deslizante). Responde `429 Too Many Requests` al
 - La sanitización se aplica también al preview en el editor del panel admin.
 - **Fórmulas (KaTeX):** se renderizan *después* de sanear, con `trust: false` (los comandos como `\href` o `\url` no generan enlaces) y `throwOnError: false`. El saneado solo admite las clases que `remark-math` necesita.
 - **Diagramas (Mermaid):** se renderizan en el navegador con `securityLevel: "strict"` (sin HTML ni eventos dentro del diagrama) y la biblioteca se carga solo cuando hay un diagrama. Sin JavaScript o ante un error se muestra el código fuente.
+- **Editor visual (TipTap):** el esquema solo admite los elementos que el blog sabe mostrar; el HTML en bruto está desactivado (`html: false`) y los enlaces llevan `rel="noopener noreferrer nofollow"` y solo admiten esquemas seguros (se bloquea `javascript:`). El contenido que sale del editor es Markdown y se vuelve a sanear al renderizarlo en el blog.
 - **Borradores locales del editor:** el autoguardado usa `localStorage` del navegador (nunca se envían al servidor) y se borran al guardar. En un equipo compartido el texto sin publicar queda en ese navegador hasta guardarlo o descartarlo.
 - **Enlace al repositorio:** `github_repo` se valida y normaliza en el backend (`usuario/repositorio`) y el blog solo construye la URL `https://github.com/…` si ese formato se cumple.
 

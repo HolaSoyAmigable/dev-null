@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ArrowLeft, BarChart3, ExternalLink, History } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowLeft, BarChart3, ExternalLink, History, Maximize2, Minimize2 } from "lucide-react";
+import { lazy, Suspense, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, type UseFormRegister } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router";
 
@@ -23,14 +23,18 @@ import { ErrorNotice, PageHeader, Spinner } from "@/components/ui/feedback";
 import { Field } from "@/components/ui/field";
 import { Input, Select, Textarea } from "@/components/ui/input";
 import { MediaDialog, MediaPicker } from "@/features/media/MediaPicker";
+import { extractOutline } from "@/lib/outline";
 import { cn, formatDateTime, slugify, toLocalInputValue } from "@/lib/utils";
 
 import { DevMetadataFields } from "./editor/DevMetadataFields";
 import { clearDraft, draftKey, findRestorableDraft, useDraftAutosave } from "./editor/draft";
 import { DraftRestoreBanner, DraftStatusLabel } from "./editor/DraftNotice";
 import { EditorStats } from "./editor/EditorStats";
-import { MarkdownEditor, type MarkdownEditorHandle } from "./editor/MarkdownEditor";
+import type { EditorHandle } from "./editor/handle";
+import { MarkdownEditor } from "./editor/MarkdownEditor";
+import { OutlineCard } from "./editor/OutlineCard";
 import { imageMarkdown } from "./editor/snippets";
+import { useEditorView, type EditorView } from "./editor/useEditorView";
 import {
   postFormSchema,
   toFormValues,
@@ -40,6 +44,16 @@ import {
 } from "./postForm";
 import { RevisionsDialog } from "./RevisionsDialog";
 import { STATUS_LABELS, STATUS_TONES } from "./status";
+
+// El editor visual (TipTap) es pesado: se descarga solo cuando se usa.
+const VisualEditor = lazy(() => import("./visual/VisualEditor"));
+
+const VIEW_TABS: readonly { value: EditorView; label: string }[] = [
+  { value: "visual", label: "Editar" },
+  { value: "markdown", label: "Markdown" },
+  { value: "preview", label: "Vista previa" },
+  { value: "split", label: "Dividida" },
+];
 
 export function PostEditorPage() {
   const { id } = useParams();
@@ -63,7 +77,21 @@ function PostEditor({ post }: { post: Post | undefined }) {
 
   const [cover, setCover] = useState<Media | null>(post?.cover ?? null);
   const [og, setOg] = useState<Media | null>(post?.og_media ?? null);
-  const [tab, setTab] = useState<"write" | "preview">("write");
+  // Vista del editor (se recuerda), modo enfoque y altura de la cabecera fija (para anclar la barra).
+  const [view, setView] = useEditorView();
+  const [focus, setFocus] = useState(false);
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barHeight, setBarHeight] = useState(0);
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const measure = () => setBarHeight(Math.round(bar.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
   const [scheduleAt, setScheduleAt] = useState(
     post?.scheduled_for
       ? toLocalInputValue(new Date(post.scheduled_for))
@@ -88,7 +116,7 @@ function PostEditor({ post }: { post: Post | undefined }) {
   } = form;
 
   // Autoguardado local de borradores (localStorage, cada 30 s) y restauración al abrir.
-  const editorRef = useRef<MarkdownEditorHandle>(null);
+  const editorRef = useRef<EditorHandle>(null);
   const storageKey = draftKey(post?.id);
   const [restorable, setRestorable] = useState(() =>
     findRestorableDraft<PostFormInput>(storageKey, toFormValues(post), post?.updated_at ?? null),
@@ -164,54 +192,101 @@ function PostEditor({ post }: { post: Post | undefined }) {
     if (!projectId && seriesOrder) setValue("series_order", "", { shouldDirty: true });
   }, [projectId, seriesOrder, setValue]);
 
+  // La vista previa y el índice se calculan con el texto "diferido" para no frenar la escritura.
+  const deferredContent = useDeferredValue(content ?? "");
+  const outline = useMemo(() => extractOutline(deferredContent), [deferredContent]);
+  const jumpTo = (offset: number, index: number) => {
+    if (view === "preview") setView("visual");
+    // Si el editor acaba de montarse, se espera a que exista.
+    window.setTimeout(() => editorRef.current?.jumpTo({ offset, index }), view === "preview" ? 150 : 0);
+  };
+
+  // Editor visual (WYSIWYG) o de texto (Markdown); ambos comparten el mismo campo `content_md`.
+  const editor = (
+    <Controller
+      name="content_md"
+      control={control}
+      render={({ field }) =>
+        view === "visual" ? (
+          <Suspense fallback={<div className="min-h-96 rounded-md border border-border bg-surface" aria-busy="true" />}>
+            <VisualEditor
+              id="content-md"
+              ref={editorRef}
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              onBlur={field.onBlur}
+              stickyTop={barHeight}
+            />
+          </Suspense>
+        ) : (
+          <MarkdownEditor
+            id="content-md"
+            ref={editorRef}
+            value={field.value ?? ""}
+            onChange={field.onChange}
+            onBlur={field.onBlur}
+            stickyTop={barHeight}
+          />
+        )
+      }
+    />
+  );
+
   return (
     <>
       <Link to="/posts" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft className="size-4" aria-hidden /> Posts
       </Link>
-      <PageHeader
-        title={post ? "Editar post" : "Nuevo post"}
-        description={
-          post
-            ? `Actualizado ${formatDateTime(savedAt ?? post.updated_at)}`
-            : "Se guarda como borrador."
-        }
-        actions={
-          <>
-            {post ? (
-              <Badge tone={STATUS_TONES[post.status]} className="self-center">
-                {STATUS_LABELS[post.status]}
-              </Badge>
-            ) : null}
-            {post ? (
-              <Button variant="ghost" onClick={() => setShowRevisions(true)}>
-                <History className="size-4" aria-hidden /> Revisiones
+      {/* Cabecera fija: Guardar, Publicar y el estado quedan a la vista al hacer scroll. */}
+      <div
+        ref={barRef}
+        className="sticky top-0 z-20 -mx-4 mb-4 border-b border-border bg-bg/95 px-4 pb-3 pt-3 backdrop-blur md:-mx-8 md:px-8"
+      >
+        <PageHeader
+          className="mb-0"
+          title={post ? "Editar post" : "Nuevo post"}
+          description={
+            post
+              ? `Actualizado ${formatDateTime(savedAt ?? post.updated_at)}`
+              : "Se guarda como borrador."
+          }
+          actions={
+            <>
+              {post ? (
+                <Badge tone={STATUS_TONES[post.status]} className="self-center">
+                  {STATUS_LABELS[post.status]}
+                </Badge>
+              ) : null}
+              {post ? (
+                <Button variant="ghost" onClick={() => setShowRevisions(true)}>
+                  <History className="size-4" aria-hidden /> Revisiones
+                </Button>
+              ) : null}
+              {post?.status === "published" ? (
+                <>
+                  <Link
+                    to={`/?post=${post.id}`}
+                    className={buttonVariants({ variant: "ghost" })}
+                  >
+                    <BarChart3 className="size-4" aria-hidden /> Métricas
+                  </Link>
+                  <a
+                    href={`/blog/${post.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={buttonVariants({ variant: "ghost" })}
+                  >
+                    <ExternalLink className="size-4" aria-hidden /> Ver
+                  </a>
+                </>
+              ) : null}
+              <Button onClick={() => void save()} disabled={isSubmitting} variant="secondary">
+                {isSubmitting ? "Guardando…" : dirty ? "Guardar*" : "Guardar"}
               </Button>
-            ) : null}
-            {post?.status === "published" ? (
-              <>
-                <Link
-                  to={`/?post=${post.id}`}
-                  className={buttonVariants({ variant: "ghost" })}
-                >
-                  <BarChart3 className="size-4" aria-hidden /> Métricas
-                </Link>
-                <a
-                  href={`/blog/${post.slug}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className={buttonVariants({ variant: "ghost" })}
-                >
-                  <ExternalLink className="size-4" aria-hidden /> Ver
-                </a>
-              </>
-            ) : null}
-            <Button onClick={() => void save()} disabled={isSubmitting} variant="secondary">
-              {isSubmitting ? "Guardando…" : dirty ? "Guardar*" : "Guardar"}
-            </Button>
-          </>
-        }
-      />
+            </>
+          }
+        />
+      </div>
 
       <ErrorNotice error={mutationError} />
 
@@ -235,40 +310,44 @@ function PostEditor({ post }: { post: Post | undefined }) {
           event.preventDefault();
           void save();
         }}
-        className="mt-4 grid gap-6 lg:grid-cols-[1fr_20rem]"
+        className={cn("mt-4 grid gap-6", !focus && "lg:grid-cols-[1fr_20rem]")}
       >
-        <div className="min-w-0 space-y-4">
+        <div className={cn("min-w-0 space-y-4", focus && "mx-auto w-full max-w-5xl")}>
           <Field label="Título" error={errors.title?.message}>
             <Input {...register("title")} className="h-11 text-base" />
           </Field>
-          <Field
-            label="Slug"
-            error={errors.slug?.message}
-            hint={<span className="font-mono">/blog/{slug || slugify(title || "")}</span>}
-          >
-            <Input {...register("slug")} placeholder="Se genera desde el título" className="font-mono" />
-          </Field>
-          <Field label="Extracto" error={errors.excerpt?.message} hint="Resumen corto para listados y SEO.">
-            <Textarea {...register("excerpt")} rows={2} />
-          </Field>
+          {/* En modo enfoque solo quedan el título y el editor (slug y extracto siguen en el formulario). */}
+          <div className={cn("space-y-4", focus && "hidden")}>
+            <Field
+              label="Slug"
+              error={errors.slug?.message}
+              hint={<span className="font-mono">/blog/{slug || slugify(title || "")}</span>}
+            >
+              <Input {...register("slug")} placeholder="Se genera desde el título" className="font-mono" />
+            </Field>
+            <Field label="Extracto" error={errors.excerpt?.message} hint="Resumen corto para listados y SEO.">
+              <Textarea {...register("excerpt")} rows={2} />
+            </Field>
+          </div>
 
           <div>
             <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <div role="tablist" aria-label="Editor" className="flex gap-1">
-                  {(["write", "preview"] as const).map((value) => (
+                  {VIEW_TABS.map(({ value, label }) => (
                     <button
                       key={value}
                       type="button"
                       role="tab"
-                      aria-selected={tab === value}
-                      onClick={() => setTab(value)}
+                      aria-selected={view === value}
+                      onClick={() => setView(value)}
                       className={cn(
                         "cursor-pointer rounded-md px-3 py-1 text-sm",
-                        tab === value ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
+                        value === "split" && "max-lg:hidden",
+                        view === value ? "bg-surface-2 text-fg" : "text-muted hover:text-fg",
                       )}
                     >
-                      {value === "write" ? "Escribir" : "Vista previa"}
+                      {label}
                     </button>
                   ))}
                 </div>
@@ -279,31 +358,43 @@ function PostEditor({ post }: { post: Post | undefined }) {
                 <Button size="sm" variant="ghost" onClick={() => setInsertImage(true)}>
                   Insertar imagen
                 </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-pressed={focus}
+                  onClick={() => setFocus((value) => !value)}
+                  title={focus ? "Volver al formulario completo" : "Oculta el panel lateral para escribir sin distracciones"}
+                >
+                  {focus ? <Minimize2 className="size-4" aria-hidden /> : <Maximize2 className="size-4" aria-hidden />}
+                  {focus ? "Salir del enfoque" : "Enfoque"}
+                </Button>
               </div>
             </div>
-            {tab === "write" ? (
-              <Controller
-                name="content_md"
-                control={control}
-                render={({ field }) => (
-                  <MarkdownEditor
-                    id="content-md"
-                    ref={editorRef}
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                  />
-                )}
-              />
-            ) : (
+            {view === "visual" || view === "markdown" ? (
+              editor
+            ) : view === "preview" ? (
               <Card className="min-h-96 p-6">
-                <MarkdownPreview source={content ?? ""} />
+                <MarkdownPreview source={deferredContent} />
               </Card>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="min-w-0">{editor}</div>
+                {/* La vista previa acompaña al scroll, bajo la cabecera fija. */}
+                <div
+                  className="min-w-0 self-start lg:sticky lg:overflow-auto"
+                  style={{ top: barHeight + 12, maxHeight: `calc(100vh - ${barHeight + 24}px)` }}
+                >
+                  <Card className="min-h-96 p-6">
+                    <MarkdownPreview source={deferredContent} />
+                  </Card>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        <aside className="space-y-4">
+        <aside className={cn("space-y-4", focus && "hidden")}>
+          <OutlineCard items={outline} onJump={jumpTo} />
           {post ? (
             <PublishCard
               post={post}
@@ -418,7 +509,7 @@ function PostEditor({ post }: { post: Post | undefined }) {
           if (editorRef.current) {
             editorRef.current.insertMedia(media); // en la posición del cursor
           } else {
-            // Desde la vista previa el editor no está montado: se añade al final.
+            // Desde la vista previa no hay editor montado: se añade al final.
             setValue(
               "content_md",
               `${content ?? ""}\n\n${imageMarkdown(media.alt_text ?? "", media.url)}\n`,
@@ -426,7 +517,7 @@ function PostEditor({ post }: { post: Post | undefined }) {
             );
           }
           setInsertImage(false);
-          setTab("write");
+          if (view === "preview") setView("visual");
         }}
       />
     </>

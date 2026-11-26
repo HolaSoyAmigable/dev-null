@@ -39,9 +39,23 @@ export default defineConfig(({ mode }) => {
     base: "/admin/",
     plugins: [redirectBase(), react(), tailwindcss()],
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
-    // Mermaid se importa de forma diferida: sin esto, Vite lo optimiza al primer uso y recarga la
-    // página entera en desarrollo (se perdería el contenido del editor sin guardar).
-    optimizeDeps: { include: ["mermaid"] },
+    // Mermaid y el editor visual se importan de forma diferida: sin esto, Vite los optimiza al primer
+    // uso y recarga la página entera en desarrollo (se perdería el contenido del editor sin guardar).
+    optimizeDeps: {
+      include: [
+        "mermaid",
+        "katex",
+        "@tiptap/react",
+        "@tiptap/starter-kit",
+        "@tiptap/extension-image",
+        "@tiptap/extension-list",
+        "@tiptap/extension-placeholder",
+        "@tiptap/extension-table",
+        "@tiptap/extension-code-block-lowlight",
+        "lowlight",
+        "tiptap-markdown",
+      ],
+    },
     server: {
       port: 5173,
       proxy,

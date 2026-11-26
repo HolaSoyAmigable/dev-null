@@ -47,13 +47,15 @@ export function PageHeader({
   title,
   description,
   actions,
+  className,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className={cn("mb-6 flex flex-wrap items-end justify-between gap-4", className)}>
       <div>
         <h1 className="font-mono text-xl font-semibold text-fg">{title}</h1>
         {description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}
