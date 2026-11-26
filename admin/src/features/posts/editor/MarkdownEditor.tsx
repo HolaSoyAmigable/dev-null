@@ -80,6 +80,7 @@ export function MarkdownEditor({ id, value, onChange, onBlur, minRows = 24, stic
   // Un textarea recién cargado reporta el cursor en 0 aunque nadie lo haya colocado: hasta que el
   // usuario entra al editor, lo insertado va al final del texto y no al principio.
   const caretPlaced = useRef(false);
+  const pendingSelection = useRef<{ start: number; end: number } | null>(null);
 
   const selection = (): Selection => {
     const el = textarea.current;
@@ -105,17 +106,23 @@ export function MarkdownEditor({ id, value, onChange, onBlur, minRows = 24, stic
       latest.current = edit.value;
       const el = textarea.current;
       if (el && applyEditNative(el, edit)) return; // el evento `input` ya avisó al formulario
+      // El cursor se restaura justo después del render con el valor nuevo (ver `useLayoutEffect`).
+      pendingSelection.current = { start: edit.selectionStart, end: edit.selectionEnd };
       onChange(edit.value);
-      // El cursor se restaura tras el render con el valor nuevo.
-      requestAnimationFrame(() => {
-        const target = textarea.current;
-        if (!target) return;
-        target.focus();
-        target.setSelectionRange(edit.selectionStart, edit.selectionEnd);
-      });
     },
     [onChange],
   );
+
+  // Restaura la selección tras una edición aplicada por la vía normal: de forma síncrona, antes de
+  // que llegue el siguiente evento (un `requestAnimationFrame` podía llegar tarde).
+  useLayoutEffect(() => {
+    const pending = pendingSelection.current;
+    const el = textarea.current;
+    if (!pending || !el) return;
+    pendingSelection.current = null;
+    el.focus();
+    el.setSelectionRange(pending.start, pending.end);
+  }, [value]);
 
   useImperativeHandle(
     ref,
